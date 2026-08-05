@@ -1,0 +1,18 @@
+{
+  "name": "@mlca/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "판정 코드·상수·스키마 타입의 단일 출처. 순수 모듈이며 외부 의존을 갖지 않는다 (docs/FILE_TREE.md §2).",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test"
+  }
+}

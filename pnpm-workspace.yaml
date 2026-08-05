@@ -1,0 +1,14 @@
+# NOTE: keep this file ASCII-only. pnpm rewrites it (e.g. `pnpm approve-builds`)
+# and mangles non-ASCII comments on Windows. Korean notes live in README.md instead.
+#
+# judge/ is Python and is intentionally outside the JS workspace (docs/FILE_TREE.md 1).
+# tools/ is dev-only CLI, run from the root devDependencies.
+
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# pnpm >=10 blocks dependency install scripts by default.
+# vite needs esbuild's; nothing else is allowed to run one.
+allowBuilds:
+  esbuild: true

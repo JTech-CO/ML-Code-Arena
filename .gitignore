@@ -1,0 +1,39 @@
+# --- 시크릿 (INV-1) ---
+.env
+.env.*
+!.env.example
+
+# --- 의존성 ---
+node_modules/
+.pnpm-store/
+
+# --- 빌드 산출물 (INV-2) ---
+dist/
+build/
+*.tsbuildinfo
+.vite/
+coverage/
+
+# --- 테스트 데이터 (INV-2) ---
+# 케이스는 generator.py / reference.py 로 재생성한다 (INV-10)
+problems/*/cases/
+
+# --- Python (judge/) ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# --- 로그·임시 ---
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.tmp/
+tmp/
+
+# --- OS / 에디터 ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

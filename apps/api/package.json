@@ -1,0 +1,17 @@
+{
+  "name": "@mlca/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "HTTP 계약·인증·큐 투입·조회. 채점 실행과 컨테이너 조작은 하지 않는다 (docs/FILE_TREE.md §2).",
+  "main": "./src/index.js",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mlca/shared": "workspace:*",
+    "fastify": "^5.11.2"
+  }
+}

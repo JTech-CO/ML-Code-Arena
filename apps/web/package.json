@@ -1,0 +1,24 @@
+{
+  "name": "@mlca/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "화면·상태·SSE 구독. 채점 로직과 DB 접근은 하지 않는다 (docs/FILE_TREE.md §2).",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mlca/shared": "workspace:*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.27",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^5.2.0",
+    "vite": "^7.3.6"
+  }
+}

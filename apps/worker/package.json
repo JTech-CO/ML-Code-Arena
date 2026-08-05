@@ -1,0 +1,16 @@
+{
+  "name": "@mlca/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "큐 소비·컨테이너 실행·결과 기록. HTTP 라우팅과 인증은 하지 않는다 (docs/FILE_TREE.md §2).",
+  "main": "./src/index.js",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mlca/shared": "workspace:*"
+  }
+}
