@@ -1,0 +1,12 @@
+# tools/ — 개발·운영 CLI
+
+런타임 경로에 포함되지 않는다 (`docs/FILE_TREE.md` §2). 루트에서 `node tools/<name>.js` 로 실행한다.
+
+| 파일 | 역할 | phase | 상태 |
+|---|---|---|---|
+| `check-boundaries.js` | 모듈 경계 룰이 실제로 위반을 막는지 검증 (INV-3) | M0 | 있음 |
+| `judge-cli.js` | 로컬 채점 CLI | M1 | 예정 |
+| `problem-sync.js` | 문제 적재·검증 (`--verify` 로 기대값 재생성, INV-10) | M6 | 예정 |
+| `batch-judge.js` | 전 문제 일괄 채점 | M6 | 예정 |
+| `contrast-check.js` | 토큰 대비 검사 (INV-12) | M4 | 예정 |
+| `design-lint.js` | 금지 패턴 점검 (`docs/DESIGN.md` §12) | M4 | 예정 |
