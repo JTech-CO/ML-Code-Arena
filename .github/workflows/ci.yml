@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: build / typecheck / lint / test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: pnpm 설치
+        uses: pnpm/action-setup@v4
+
+      # docs/ENVIRONMENT.md §1 — Node 22 LTS 고정.
+      - name: Node 설치
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+
+      # 경계 룰이 "설정되어 있다"가 아니라 "실제로 막는다"를 확인한다 (INV-3).
+      - name: 모듈 경계 실효 검증
+        run: pnpm check:boundaries
+
+      # INV-1 — 시크릿이 무시 대상인지 확인. .gitignore 가 느슨해지면 여기서 걸린다.
+      - name: .gitignore 시크릿 제외 확인
+        run: |
+          git check-ignore -q .env
+          git check-ignore -q problems/0000-sample/cases/case_00.json
