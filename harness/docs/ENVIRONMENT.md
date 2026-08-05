@@ -54,10 +54,19 @@ pnpm build
 pnpm typecheck
 pnpm lint
 pnpm test
+pnpm check:boundaries               INV-3 — 경계 룰이 실제로 막는지
+pnpm judge:image                    채점 이미지 빌드
+pnpm judge:fixtures                 M1 게이트 — 판정 8종 + 격리 불변식
 node tools/contrast-check.js        INV-12
 node tools/design-lint.js           금지 패턴
 node tools/batch-judge.js --source reference    M6 게이트
 ~~~
+
+`pnpm judge:fixtures` 는 Docker 데몬이 떠 있어야 한다. 격리 없이 채점하지 않는다(INV-4).
+
+러너 단위 테스트는 `judge:fixtures` 안에서 **컨테이너 안**에 돌린다. 채점이 실제로 도는
+numpy 버전과 같은 곳에서 확인해야 하기 때문이다. 빠른 반복이 필요하면 호스트에서도
+돌릴 수 있으나(`python -m unittest discover -s judge/tests`), 그 결과는 정본이 아니다.
 
 ## 6. 자원 요건
 

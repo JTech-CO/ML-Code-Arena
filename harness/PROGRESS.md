@@ -3,11 +3,14 @@
 > 이 팩에서 **매 세션 바뀌는 유일한 파일**. 세션이 끊겨도 이 파일만 읽으면 이어서 작업 가능해야 한다.
 
 ## 현재 상태
-- **현재 phase**: M0 완료 → **M1(채점 러너) 진입 가능**
-- **상태**: M0 DoD 5/5 통과, 저장소 경로에서 재현 확인
-- **마지막 갱신**: 2026-08-06, M0 구현 세션
+- **현재 phase**: M1 — 채점 러너 + 격리 컨테이너 ★
+- **상태**: 구현 완료 · **게이트 미실행 (Docker 데몬 미기동)**
+- **마지막 갱신**: 2026-08-06, M0+M1 구현 세션
 - **저장소 경로**: `C:\Users\MSI\Desktop\ml-code-arena` — **비ASCII 경로로 되돌리지 말 것**
   (pnpm 네이티브 링커가 죽는다. 아래 막힘 기록)
+
+**막힌 지점 한 줄**: Docker Desktop 이 꺼져 있다. 사용자가 실행한 뒤
+`pnpm judge:image && pnpm judge:fixtures` 를 돌리면 M1 DoD 가 확정된다.
 
 ## 직전에 끝낸 것
 - 기술/디자인 백서 Phase 1 v0.1.0, 작업 하네스 팩 인스턴스화 (이전 세션)
@@ -27,19 +30,34 @@
   - `harness/docs/FILE_TREE.md` v0.2.0 — 경계 강제 수단 2종 명시, 신규 파일 반영
 
 ## 다음 할 일
-1. **M1(채점 러너) 진입.** 전체 계약의 원점이므로 서두르지 않는다. `phases/M1_judge_runner.md`.
-   - DoR 확인: Docker 이미지 빌드 가능 환경 (Docker 29.6.2 설치 확인됨)
-   - `docs/TECHNICAL.md` §4(채점 엔진)·§5(격리) 정독
-   - INV-4·INV-5·INV-6·INV-7·INV-8
-2. M1 작업 시 주의:
-   - `packages/shared/src/schema/index.js` 의 `RunnerOutput` 은 백서 §4.2.3 을 옮긴 것이다.
-     러너 구현이 확정되면 **이 파일과 대조**하고 어긋나면 백서와 함께 갱신한다.
-   - 판정 8종 목록은 `packages/shared` 가 단일 출처다. Python 러너는 재구현이 불가피하므로
-     **목록 일치를 테스트로 강제**할 것 (`docs/FILE_TREE.md` §4).
-   - 격리 옵션(`docker run` 플래그)은 **단일 상수 모듈 한 곳**에만 둔다.
-     실행 제한 수치는 이미 `packages/shared` 의 `EXECUTION_LIMITS` 에 있다. 재선언하지 말 것.
-   - `AC` 만 확인하고 넘어가지 않는다. 판정 8종 전부 재현이 게이트다.
-3. M2 진입 전 결정: Docker rootless 운용 여부 (ADR-0007 후보), Postgres 16 · Redis 7 준비.
+1. **[사용자 조작 필요] Docker Desktop 실행** → 그 뒤 아래 두 줄로 M1 DoD 확정.
+   ~~~bash
+   pnpm judge:image        # 이미지 빌드 (numpy·scipy 설치라 첫 빌드는 수 분)
+   pnpm judge:fixtures     # 판정 8종 + 격리 불변식 게이트 전부
+   ~~~
+   실패하면 그 자리에서 고친다. **격리 옵션을 푸는 것은 레드라인이며 STOP 대상이다.**
+2. **[사용자 결정] DoD 6 게이트 문구** — `phases/M1_judge_runner.md` 증거 절 참조.
+   현재 grep 이 INV-7 을 **집행하는** 코드에 걸린다(거짓 양성). 코드는 안전한 쪽으로
+   두었고 게이트는 손대지 않았다.
+3. M1 확정 후 M2(큐 + 워커) 진입. `apps/worker/src/sandbox/` 는 이미 M1 에서
+   완성돼 있으므로 M2 는 큐 소비와 결과 기록만 붙이면 된다.
+4. M2 진입 전 결정: Docker rootless 운용 여부 (ADR-0007 후보), Postgres 16 · Redis 7 준비.
+
+## M1 구현 시 확정한 것 (이후 phase 가 의존)
+- **러너 출력 스키마에 최상위 `detail` 추가.** `CE`·`FBD` 는 케이스를 하나도 실행하지
+  않아 케이스 배열에 상세를 실을 자리가 없다. 백서 §4.2.3 과
+  `packages/shared/src/schema/index.js` 를 함께 갱신했다.
+- **러너는 `/opt/mlca/runner` 에 별도 볼륨으로 붙인다.** `/judge` 에는 제출·명세·케이스만
+  둔다. 러너는 저장소 원본 한 부만 존재한다.
+- **AST 검사 우선순위**: 하드 차단(`os`·`subprocess` 등) > `allowed_imports` 화이트리스트
+  > 문제별 블랙리스트. ADR-0002 의 "화이트리스트 우선"을 지키되, 문제 정의의 실수 하나가
+  격리 전제를 무너뜨리지 않게 하드 차단을 위에 둔다.
+- **`allowed_imports` 는 부재와 빈 목록을 구분한다.** 부재 = 화이트리스트 미사용,
+  `[]` = 아무 것도 허용 안 함. 같게 다루면 실수로 비운 화이트리스트가 조용히 무제한이 된다.
+- **격리 옵션은 `apps/worker/src/sandbox/options.js` 한 곳**. CLI 와 큐 워커가 같은 함수를
+  쓴다. 로컬에서 통과한 것이 운영에서 다르게 돌면 안 된다.
+- **`--rm` 을 쓰지 않는다.** OOM 여부는 `docker inspect` 로만 알 수 있는데 `--rm` 은
+  조회 대상을 없앤다. 대신 `finally` 에서 반드시 지운다 (INV-8).
 
 ## 미결 질문 / 사용자 결정 대기
 - **환경 편차** — 로컬 Node v25.2.0(문서 22 LTS) / pnpm 11.5.3(문서 9.x).
@@ -65,6 +83,18 @@
 | M0 | DoD 5 판정 8종 | `pnpm test` | PASS · 13/13 (백서 §4.3 표와 순서까지 대조) | 2026-08-06 |
 
 ## 막힘 기록 (STOP 발동 시)
+
+### 2026-08-06 — Docker 데몬 미기동으로 M1 게이트 실행 불가
+- **증상**: `docker version` 이 `npipe:////./pipe/dockerDesktopLinuxEngine` 에 연결 실패.
+  CLI 는 29.6.2 로 설치돼 있고 `docker-desktop` WSL 배포판은 `Stopped`.
+- **시도 (전부 실패)**: `Docker Desktop.exe` 직접 기동 2회 — 프로세스가 남지 않음 /
+  `Start-Service com.docker.service` — "Cannot open service" (권한 거부).
+- **판단**: Docker Desktop 은 사용자의 대화형 세션에서 떠야 한다. 에이전트 프로세스에서
+  띄울 수 없는 **외부 제약**이다 (HARNESS.md §2.1).
+- **그동안 한 것**: Docker 가 필요 없는 부분을 전부 끝냈다. 러너 순수 로직 단위 테스트
+  36건을 호스트에서 돌려 통과시켰고, 그 과정에서 화이트리스트 우선순위 버그 1건을 잡았다.
+  M0 게이트 5종도 M1 코드 추가 후 전부 그린이다.
+- **해소 방법**: 사용자가 Docker Desktop 실행 → `pnpm judge:image && pnpm judge:fixtures`.
 
 ### 2026-08-06 — 비ASCII 저장소 경로에서 `pnpm install` 네이티브 크래시 → **해결(경로 이전)**
 - **증상**: 링크 단계에서 종료 코드 `-1073740791`(`0xC0000409`, STATUS_STACK_BUFFER_OVERRUN).
