@@ -17,6 +17,11 @@ coverage/
 # --- 테스트 데이터 (INV-2) ---
 # 케이스는 generator.py / reference.py 로 재생성한다 (INV-10)
 problems/*/cases/
+judge/fixtures/problems/*/cases/
+
+# --- 채점 작업 디렉터리 ---
+# 제출 원문이 잠시 머무는 곳이다. 남기지 않는다.
+.judge-work/
 
 # --- Python (judge/) ---
 __pycache__/

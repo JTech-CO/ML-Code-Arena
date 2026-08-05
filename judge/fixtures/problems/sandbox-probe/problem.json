@@ -1,0 +1,19 @@
+{
+  "slug": "sandbox-probe",
+  "title": "격리 검증용 고정 문제 (INV-4 · INV-8)",
+  "tier": 1,
+  "difficulty": 1,
+  "judge_mode": "tolerance",
+  "allowed_languages": ["python"],
+  "entrypoint": "solve",
+  "time_limit_ms": 10000,
+  "memory_limit_mb": 512,
+  "compare_options": { "rtol": 1e-5, "atol": 1e-8, "equal_nan": false },
+  "restrictions": {
+    "//": "일부러 느슨하다. socket·open 이 AST 단계에서 막히면 컨테이너 격리 자체를 시험할 수 없다. AST 검사와 컨테이너 격리는 서로 다른 방어층이며, 이 문제는 뒤쪽 층만 시험한다.",
+    "allowed_imports": ["numpy", "math", "socket", "urllib"],
+    "forbidden_builtins": [],
+    "required_entrypoint": "solve"
+  },
+  "tags": ["fixture"]
+}

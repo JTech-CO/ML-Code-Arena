@@ -1,0 +1,5 @@
+{
+  "//": "tools/ 는 워크스페이스 패키지가 아니라 pnpm -r 이 훑지 않는다. 루트 typecheck 스크립트가 이 설정을 따로 돌린다.",
+  "extends": "../tsconfig.base.json",
+  "include": ["*.js", "../apps/worker/src/sandbox/*.js"]
+}
