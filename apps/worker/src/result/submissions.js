@@ -99,10 +99,18 @@ function firstFailedCase(output) {
   return failing ? failing.index : null;
 }
 
+/** `ie_reason` 은 운영 로그다. 무한정 길어지면 행이 비대해지므로 자른다. */
+const IE_REASON_MAX = 500;
+
 /**
  * 채점 결과를 확정한다. 같은 제출에 여러 번 호출해도 결과가 같다.
  *
- * @param {{ submissionId: string, verdict: import('@mlca/shared').Verdict, output: import('@mlca/shared').RunnerOutput|null }} input
+ * `ieReason` 은 **API 로 나가지 않는다** — `submissions.ie_reason` 은 `serialize.js`
+ * 통과 목록 밖이다 (migration 0005). 여기 담기는 것은 도커·러너가 낸 실패 사유이며,
+ * 이것이 없으면 알림이 "IE 3%"까지만 말하고 왜인지는 말하지 못한다
+ * (docs/TECHNICAL.md §13.1).
+ *
+ * @param {{ submissionId: string, verdict: import('@mlca/shared').Verdict, output: import('@mlca/shared').RunnerOutput|null, ieReason?: string|null }} input
  * @returns {Promise<void>}
  */
 export async function recordResult(input) {
@@ -115,6 +123,7 @@ export async function recordResult(input) {
               memory_mb       = $4,
               failed_case_seq = $5,
               detail          = $6,
+              ie_reason       = $7,
               judged_at       = now()
         WHERE id = $1
         RETURNING user_id, problem_id, created_at`,
@@ -125,6 +134,7 @@ export async function recordResult(input) {
         input.output?.peak_memory_mb ?? null,
         firstFailedCase(input.output),
         buildDetail(input.output),
+        input.verdict === 'IE' ? (input.ieReason ?? '원인 미상').slice(0, IE_REASON_MAX) : null,
       ],
     );
 

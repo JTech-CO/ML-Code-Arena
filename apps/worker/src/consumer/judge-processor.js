@@ -96,13 +96,21 @@ export function createJudgeProcessor(options = {}) {
         submissionId,
         verdict: result.verdict,
         output: result.output,
+        ieReason: result.error ?? null,
       });
 
       return { verdict: result.verdict };
     } catch (error) {
       if (isLastAttempt) {
         // 더 시도할 곳이 없다. IE 로 확정해 제출이 JUDGING 에 갇히지 않게 한다.
-        await recordResult({ submissionId, verdict: VERDICT.IE, output: null });
+        // 사유를 함께 남긴다 — 여기까지 온 IE 가 재시도를 전부 소진한 것이므로
+        // 운영자가 가장 알아야 하는 부류다 (docs/TECHNICAL.md §13.1).
+        await recordResult({
+          submissionId,
+          verdict: VERDICT.IE,
+          output: null,
+          ieReason: `시도 ${claimed.attempts}/${MAX_ATTEMPTS} 소진: ${String(error)}`,
+        });
         return { verdict: VERDICT.IE };
       }
       throw error;

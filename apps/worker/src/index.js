@@ -45,7 +45,12 @@ worker.on('failed', async (job) => {
   const submissionId = job.data?.submission_id;
   if (!submissionId) return;
   try {
-    await recordResult({ submissionId, verdict: VERDICT.IE, output: null });
+    await recordResult({
+      submissionId,
+      verdict: VERDICT.IE,
+      output: null,
+      ieReason: `큐 재시도 소진 (BullMQ failed): ${job.failedReason ?? '원인 미상'}`,
+    });
     console.error(`[worker] ${submissionId} 재시도 소진 → IE 확정`);
   } catch (error) {
     console.error(`[worker] IE 확정 실패 ${submissionId}: ${String(error)}`);
