@@ -4,8 +4,7 @@
 
 ## 현재 상태
 - **현재 phase**: M1 — 채점 러너 + 격리 컨테이너 ★
-- **상태**: **DoD 9개 중 8개 통과.** 컨테이너 게이트 24/24, M0 게이트 5/5.
-  DoD 6 만 게이트 문구 결정 대기 (구현은 안전한 쪽으로 완료)
+- **상태**: **M1 완료 — DoD 9/9 통과.** 컨테이너 게이트 24/24, M0 게이트 5/5.
 - **마지막 갱신**: 2026-08-06, M0+M1 구현 세션
 - **저장소 경로**: `C:\Users\MSI\Desktop\ml-code-arena` — **비ASCII 경로로 되돌리지 말 것**
   (pnpm 네이티브 링커가 죽는다. 아래 막힘 기록)
@@ -31,13 +30,18 @@
   - `harness/docs/FILE_TREE.md` v0.2.0 — 경계 강제 수단 2종 명시, 신규 파일 반영
 
 ## 다음 할 일
-1. **[사용자 결정] DoD 6 게이트 문구** — `phases/M1_judge_runner.md` 증거 절 참조.
-   grep 이 INV-7 을 **집행하는** 코드에 걸린다(거짓 양성). 실측 결과 kwarg 를 빼도
-   현재 numpy 는 객체 배열을 거부하고 버전이 정확히 고정돼 있어 두 선택지 모두 안전하다.
-   차이는 명시성 대 게이트 문구다. 코드는 안전한 쪽으로 두고 게이트는 손대지 않았다.
-2. M2(큐 + 워커) 진입. `apps/worker/src/sandbox/` 는 이미 M1 에서 완성돼 있으므로
-   M2 는 큐 소비와 결과 기록만 붙이면 된다. `runInSandbox()` 가 그대로 재사용된다.
-3. M2 진입 전 결정: Docker rootless 운용 여부 (ADR-0007 후보), Postgres 16 · Redis 7 준비.
+1. **M2(큐 + 워커) 진입.** `phases/M2_queue_worker.md`.
+   `apps/worker/src/sandbox/` 는 M1 에서 완성돼 있다. `runInSandbox()` 를 그대로 쓰고
+   큐 소비(`src/consumer/`)와 결과 기록(`src/result/`)만 붙이면 된다.
+2. M2 진입 전 준비: Redis 7 · Postgres 16 기동, Docker rootless 운용 여부 결정
+   (ADR-0007 후보 — 워커에 Docker 소켓을 주는 것은 사실상 호스트 루트 권한이다).
+3. M2 작업 시 주의:
+   - 큐 이름은 `packages/shared` 의 `QUEUE_NAMES` 단일 출처. 불일치는 "제출이 PENDING
+     에서 멈춤"으로 나타난다 (RUNBOOK 20번).
+   - `IE` 는 자동 재시도 대상이고 통계에서 제외된다. `VERDICT_META.IE.autoRetry` 로
+     이미 표현돼 있으니 워커가 그 플래그를 읽게 한다.
+   - 컨테이너 정리는 `runInSandbox` 의 `finally` 가 이미 보장한다. 워커에서 중복
+     구현하지 말 것 (INV-8).
 
 ## M1 확정 게이트 (재실행 명령)
 ~~~bash
@@ -60,6 +64,12 @@ pnpm judge:fixtures     # 게이트 24건 — 판정 8종 + 격리 불변식 + �
   쓴다. 로컬에서 통과한 것이 운영에서 다르게 돌면 안 된다.
 - **`--rm` 을 쓰지 않는다.** OOM 여부는 `docker inspect` 로만 알 수 있는데 `--rm` 은
   조회 대상을 없앤다. 대신 `finally` 에서 반드시 지운다 (INV-8).
+
+## 결정된 것 (이번 세션)
+- **DoD 6 게이트 문구 개정** — 존재가 아니라 **활성화**를 본다.
+  `allow_pickle=False` 는 INV-7 위반이 아니라 집행 지점이다. 단순 문자열 검색은
+  집행 코드를 위반으로 오인하고, 그걸 피하려고 명시적 방어를 지우면 보호가 기본값에
+  의존하게 된다. `INVARIANTS.md` INV-7 검증란과 CI 에 함께 반영했다.
 
 ## 미결 질문 / 사용자 결정 대기
 - **환경 편차** — 로컬 Node v25.2.0(문서 22 LTS) / pnpm 11.5.3(문서 9.x).
@@ -92,7 +102,7 @@ pnpm judge:fixtures     # 게이트 24건 — 판정 8종 + 격리 불변식 + �
 | M1 | DoD 7 기대값 비노출(INV-5) | 위 | PASS · 후보 300건 중 노출 **0건** | 2026-08-06 |
 | M1 | DoD 8 자원 상한 | 위 | PASS · MLE·TLE 재현 | 2026-08-06 |
 | M1 | DoD 9 fork 차단 | 위 | PASS · 62/400 성공 (상한 64) | 2026-08-06 |
-| M1 | DoD 6 (INV-7) | `git grep pickle judge/` | **보류** · 2건은 INV-7 집행 코드(거짓 양성) | 2026-08-06 |
+| M1 | DoD 6 직렬화(INV-7) | `git grep -niE "allow_pickle=True\|import pickle\|\.pkl" judge/` | PASS · 0건. 위반 3종 심어 탐지 확인 후 제거 | 2026-08-06 |
 
 ## 막힘 기록 (STOP 발동 시)
 

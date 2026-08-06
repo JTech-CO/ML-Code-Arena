@@ -43,3 +43,12 @@ jobs:
         run: |
           git check-ignore -q .env
           git check-ignore -q problems/0000-sample/cases/case_00.json
+
+      # INV-7 — 안전하지 않은 직렬화를 "활성화"하는 코드가 없는지.
+      # 존재가 아니라 활성화를 본다. `allow_pickle=False` 는 위반이 아니라 집행 지점이다.
+      - name: 직렬화 정책 확인
+        run: |
+          if git grep -n -i -E 'allow_pickle\s*=\s*True|^\s*import\s+pickle\b|^\s*from\s+pickle\s+import\b|\.pkl\b' -- judge/; then
+            echo "INV-7 위반: 안전하지 않은 직렬화를 켜는 코드가 있다"
+            exit 1
+          fi

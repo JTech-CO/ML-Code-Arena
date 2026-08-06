@@ -1,7 +1,6 @@
 # M1 — 채점 러너 + 격리 컨테이너 ★
 
-**상태**: DoD 9개 중 8개 통과 · DoD 6 은 게이트 문구 결정 대기 (구현은 안전한 쪽으로 완료)
-**갱신**: 2026-08-06
+**상태**: 완료 · DoD 9/9 통과  **갱신**: 2026-08-06
 
 ## 맥락
 **전체 계약의 원점.** 판정 코드와 러너 출력 스키마가 여기서 확정되고, API·워커·UI가 전부 이것을 소비한다. 동시에 이 프로젝트에서 유일하게 신뢰할 수 없는 코드를 실행하는 지점이므로 격리 불변식 4건(INV-4·INV-6·INV-7·INV-8)이 전부 여기에 걸린다.
@@ -28,17 +27,34 @@
 3. 네트워크 호출을 시도하는 샘플이 실패한다(INV-4 준수) — 컨테이너 내부에서 외부 접속 시도 → 실패 + `RE`.
 4. 모듈 최상위에 부작용 코드(`open('/tmp/x','w')`)를 둔 금지 import 샘플이 **부작용 없이** `FBD` 판정을 받는다(INV-6 준수).
 5. 연속 2회 제출에서 컨테이너 ID가 다르고, 1회차가 `/tmp`에 쓴 파일을 2회차가 읽지 못한다(INV-8 준수).
-6. `judge/` 전체 grep에서 `pickle`·`.pkl` 이 0건(INV-7 준수).
+6. 안전하지 않은 직렬화를 **활성화**하는 코드가 0건이고, 오염된 케이스 파일이 실제로
+   거부된다(INV-7 준수). 두 가지를 함께 본다.
+   - `judge/` 에 `allow_pickle=True`·`import pickle`·`.pkl` 사용이 0건
+   - dtype 이 객체인 적대적 `.npz` 를 로더가 거부하는 테스트 통과
+
+   > 최초 문구는 `grep "pickle\|\.pkl" judge/` 가 0건이었으나, 그 검색은 INV-7 을
+   > **집행하는** 코드(`allow_pickle=False`)를 위반으로 오인한다. 존재가 아니라
+   > 활성화를 보도록 좁히고, 더 강한 보증인 적대적 파일 거부 테스트를 함께 요구한다.
+   > grep 은 "안 쓴다"를 보고, 그 테스트는 "오염된 파일을 실제로 막는다"를 본다.
+   > (2026-08-06 사용자 승인)
 7. 러너 stdout·stderr·CLI 출력 어디에도 기대값이 등장하지 않는다(INV-5 준수) — `WA` 샘플 출력에서 기대값 문자열 grep 0건.
 8. `--memory=512m` 초과 샘플이 `MLE`, 무한 루프 샘플이 10초 내 `TLE`로 종료된다.
 9. fork bomb 샘플이 `--pids-limit=64`에 막혀 호스트에 영향 없이 종료된다.
 
 ## 검증
 ~~~
-docker build -t mlca-python:3.11 judge/image
-for f in judge/fixtures/*.py; do node tools/judge-cli.js --problem fixture --source "$f"; done
-grep -rn "pickle\|\.pkl" judge/ | wc -l          # 0 이어야 함
-node tools/judge-cli.js --problem gd-1d --source judge/fixtures/wa.py | grep -c "<기대값 문자열>"   # 0
+pnpm judge:image        # docker build -t mlca-python:3.11 judge/image
+pnpm judge:fixtures     # 판정 8종 + 격리 불변식 + 커널 상태 + 기대값 비노출
+
+# DoD 6 — 활성화 사용 0건 (allow_pickle=False 는 집행 코드이므로 걸리지 않는다)
+grep -rniE "allow_pickle\s*=\s*True|^\s*import\s+pickle|\.pkl\b" judge/ | wc -l   # 0
+~~~
+
+개별 제출을 직접 채점할 때:
+
+~~~
+node tools/judge-cli.js --prepare --problem l2norm
+node tools/judge-cli.js --problem l2norm --source <파일> [--json] [--expect AC]
 ~~~
 
 ## 증거
@@ -123,18 +139,25 @@ Seccomp                    2  (filter)
 (`fd274f5e…` vs `d8c5a3d1…`). 기대값을 컨테이너에서 생성해야 하는 이유가 실측으로 확인됐다.
 호스트에서 만든 기대값을 썼다면 정답 제출이 `WA` 로 떨어졌을 것이다.
 
-### DoD 6 — 게이트 문구 조정 필요 (사용자 결정)
-
-검증 명령 `grep -rn "pickle\|\.pkl" judge/ | wc -l  # 0` 이 **2건**을 잡는다.
-둘 다 `judge/runner/codec.py` 의 같은 사안이다.
+### DoD 6 — 게이트 문구 개정 후 통과 (2026-08-06 사용자 승인)
 
 ~~~
-codec.py:136   주석 — `allow_pickle=False` 를 명시하는 것이 1차 방어이고...
-codec.py:146   with np.load(npz_path, allow_pickle=False) as handle:
+$ git grep -niE "allow_pickle\s*=\s*True|^\s*import\s+pickle\b|\.pkl\b" -- judge/
+0건
 ~~~
 
-이 줄은 그 포맷을 **쓰는** 코드가 아니라 **끄는** 코드다. 즉 INV-7 위반이 아니라
-INV-7 의 집행 지점이다. 게이트가 컴플라이언스 코드에 걸리는 거짓 양성이다.
+**게이트가 실제로 무는지도 확인했다.** 세 종류 위반(`import pickle` · `allow_pickle=True` ·
+`.pkl` 경로)을 러너에 심어 grep 과 단위 테스트가 각각 차단하는지 보고, 제거 후 그린
+복귀까지 확인했다. 통과하는 게이트와 아무것도 안 하는 게이트는 출력이 같다.
+
+최초 문구는 `grep "pickle\|\.pkl" judge/` 가 0건이었고 **2건**을 잡았다. 둘 다
+`judge/runner/codec.py` 의 `allow_pickle=False` — 그 포맷을 **쓰는** 코드가 아니라
+**끄는** 코드이며, INV-7 위반이 아니라 집행 지점이다.
+
+개정 과정에서 같은 함정을 한 번 더 밟았다. 탐지 패턴 `\.pkl\b` 를 테스트 파일에 그대로
+적었더니 탐지기가 자기 자신에 걸렸다. 패턴을 쪼개 자기 회피시켰고, 덕분에 게이트를
+`judge/` 전체에 **예외 없이** 걸 수 있다. 검사 대상에서 디렉터리를 빼는 방식이었다면
+그 디렉터리가 사각지대가 됐을 것이다.
 
 **실측 데이터** (컨테이너에서 확인, 2026-08-06)
 
@@ -155,11 +178,12 @@ numpy 2.4.6
 | DoD 6 grep | 2건 (거짓 양성) | 0건 (문자 그대로 통과) |
 | numpy 상향 시 | 자동으로 안전 | 적대적 파일 테스트가 잡아냄 |
 
-**코드는 안전한 쪽으로 두었고 게이트는 손대지 않았다.** 게이트 변경은 사용자 결정이다.
+**채택: 게이트 문구를 개정하고 코드의 명시적 방어는 유지한다** (2026-08-06 사용자 승인).
+보호 근거를 코드에서 지우는 쪽은 게이트를 위한 거래이지 안전을 위한 거래가 아니다.
 
-제안: DoD 6 을 다음으로 바꾼다.
+개정된 DoD 6:
 1. `judge/` 에서 그 포맷을 **활성화**하는 사용이 0건 (`allow_pickle=True` 금지)
-2. dtype 이 객체인 적대적 `.npz` 를 로더가 거부하는 테스트 통과 — **이미 구현·통과**
+2. dtype 이 객체인 적대적 `.npz` 를 로더가 거부하는 테스트 통과
 
 2번은 grep 보다 강한 보증이다. grep 은 "안 쓴다"를 보고, 이건 "오염된 파일을 실제로
 막는다"를 본다.

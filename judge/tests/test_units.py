@@ -333,6 +333,44 @@ class CompareTest(unittest.TestCase):
 #: 호스트에서는 judge/tests -> judge/fixtures, 컨테이너에서는
 #: /opt/mlca/tests -> /opt/mlca/fixtures. 같은 상대 경로가 성립하도록 마운트를 맞췄다.
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
+RUNNER_DIR = Path(__file__).resolve().parent.parent / "runner"
+
+#: 안전하지 않은 직렬화를 **활성화**하는 패턴 (INV-7, M1 DoD 6).
+#:
+#: 존재가 아니라 활성화를 본다. `allow_pickle=False` 는 그 포맷을 쓰는 코드가 아니라
+#: 끄는 코드이며, 단순 문자열 검색은 그 집행 지점을 위반으로 오인한다.
+#:
+#: 탐지기는 자기 자신에 걸리지 않아야 한다. 그래야 게이트를 `judge/` 전체에
+#: 예외 없이 걸 수 있다. 앞의 세 패턴은 리터럴 `\s*`·`\b` 덕에 자연히 자기 회피가
+#: 되지만, 확장자 패턴만은 그대로 두면 자기 자신과 매치하므로 쪼개서 쓴다.
+_ENABLING_PATTERNS = [
+    r"allow_pickle\s*=\s*True",
+    r"^\s*import\s+pickle\b",
+    r"^\s*from\s+pickle\s+import\b",
+    r"\." + r"pkl\b",
+]
+
+
+class SerializationPolicyTest(unittest.TestCase):
+    """INV-7 — 역직렬화 시 임의 코드가 실행되는 포맷을 켜지 않는다 (ADR-0003)."""
+
+    def test_러너에_위험한_직렬화를_켜는_코드가_없다(self):
+        import re
+
+        offenders = []
+        for path in sorted(RUNNER_DIR.glob("*.py")):
+            for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                for pattern in _ENABLING_PATTERNS:
+                    if re.search(pattern, line, re.IGNORECASE):
+                        offenders.append(f"{path.name}:{lineno}: {line.strip()}")
+
+        self.assertEqual(offenders, [], "안전하지 않은 직렬화를 켜는 코드가 있다")
+
+    def test_로더가_허용_포맷만_읽는다(self):
+        # 케이스 로더는 JSON + npz 쌍만 받는다. 다른 확장자를 읽는 경로가 없어야 한다.
+        source = (RUNNER_DIR / "codec.py").read_text(encoding="utf-8")
+        self.assertIn("np.load", source)
+        self.assertIn("allow_" + "pickle=False", source, "로더가 명시적으로 끄지 않는다")
 
 
 class ProblemDefinitionTest(unittest.TestCase):
