@@ -1,0 +1,20 @@
+{
+  "slug": "gradient-descent-1d",
+  "title": "1차원 경사하강법",
+  "tier": 5,
+  "difficulty": 2,
+  "judge_mode": "tolerance",
+  "allowed_languages": ["python"],
+  "entrypoint": "solve",
+  "time_limit_ms": 10000,
+  "memory_limit_mb": 512,
+  "compare_options": { "rtol": 1e-5, "atol": 1e-8, "equal_nan": false },
+  "restrictions": {
+    "allowed_imports": ["numpy", "math"],
+    "forbidden_attributes": ["numpy.polyder", "numpy.polyval", "numpy.roots", "numpy.polynomial"],
+    "forbidden_builtins": ["eval", "exec", "compile", "__import__", "open", "input"],
+    "required_entrypoint": "solve"
+  },
+  "tags": ["optimization"],
+  "concepts": [{ "slug": "gradient-descent", "relation": "prerequisite" }]
+}

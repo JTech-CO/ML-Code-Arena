@@ -1,0 +1,19 @@
+{
+  "slug": "learning-rate-decay",
+  "title": "학습률 감쇠 스케줄",
+  "tier": 5,
+  "difficulty": 2,
+  "judge_mode": "tolerance",
+  "allowed_languages": ["python"],
+  "entrypoint": "solve",
+  "time_limit_ms": 10000,
+  "memory_limit_mb": 512,
+  "compare_options": { "rtol": 1e-5, "atol": 1e-8, "equal_nan": false },
+  "restrictions": {
+    "allowed_imports": ["numpy", "math"],
+    "forbidden_builtins": ["eval", "exec", "compile", "__import__", "open", "input"],
+    "required_entrypoint": "solve"
+  },
+  "tags": ["optimization", "deep-learning"],
+  "concepts": [{ "slug": "learning-rate-schedule", "relation": "prerequisite" }]
+}

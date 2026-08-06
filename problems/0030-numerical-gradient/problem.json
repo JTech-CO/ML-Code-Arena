@@ -1,0 +1,27 @@
+{
+  "slug": "numerical-gradient",
+  "title": "중심 차분으로 수치 미분",
+  "tier": 5,
+  "difficulty": 3,
+  "judge_mode": "tolerance",
+  "allowed_languages": ["python"],
+  "entrypoint": "solve",
+  "time_limit_ms": 10000,
+  "memory_limit_mb": 512,
+  "compare_options": { "rtol": 1e-5, "atol": 1e-8, "equal_nan": false },
+  "restrictions": {
+    "allowed_imports": ["numpy", "math"],
+    "forbidden_attributes": [
+      "numpy.polyval",
+      "numpy.polyder",
+      "numpy.polynomial",
+      "numpy.gradient",
+      "numpy.poly1d",
+      "numpy.diff"
+    ],
+    "forbidden_builtins": ["eval", "exec", "compile", "__import__", "open", "input"],
+    "required_entrypoint": "solve"
+  },
+  "tags": ["optimization", "numerical"],
+  "concepts": [{ "slug": "numerical-differentiation", "relation": "prerequisite" }]
+}
