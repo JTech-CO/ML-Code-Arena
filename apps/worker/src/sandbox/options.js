@@ -33,6 +33,31 @@ function toMountPath(hostPath) {
 }
 
 /**
+ * 케이스 생성 컨테이너가 쓸 uid:gid.
+ *
+ * 채점 컨테이너는 항상 `65534`(nobody) 다 — 그쪽은 **사용자 코드**를 돌린다.
+ * 케이스 생성은 다르다. `generator.py`·`reference.py` 는 저장소에 커밋된 우리 콘텐츠이며,
+ * 이 컨테이너는 마운트한 문제 디렉터리에 `cases/` 를 **써야 한다**.
+ *
+ * 리눅스에서 nobody 로 돌면 호스트 디렉터리에 쓸 수 없어 케이스 생성이 통째로 실패한다
+ * (`PermissionError: '/problem/cases'`). Windows/Docker Desktop 은 바인드 마운트 권한이
+ * 느슨해 이 문제가 보이지 않았고, 실제로 리눅스 CI 가 처음 잡아냈다.
+ *
+ * 완화가 아니라 **대상이 다른 것**이다. 네트워크 차단·capability 제거·no-new-privileges 는
+ * 그대로다. 사용자 코드가 도는 경로(`buildRunArgs`)는 손대지 않는다.
+ *
+ * @returns {string}
+ */
+function caseWriterUser() {
+  // `process.getuid` 는 POSIX 에만 있다. Windows 에서는 바인드 마운트가 uid 를 보지
+  // 않으므로 기존 값을 유지한다.
+  const getuid = process.getuid;
+  const getgid = process.getgid;
+  if (typeof getuid !== 'function' || typeof getgid !== 'function') return '65534:65534';
+  return `${getuid.call(process)}:${getgid.call(process)}`;
+}
+
+/**
  * @typedef {object} SandboxTarget
  * @property {string} containerName 컨테이너 이름 (제출당 고유)
  * @property {string} judgeDir 호스트의 제출 작업 디렉터리. solution.py·spec.json·cases/
@@ -129,7 +154,7 @@ export function buildMakeCasesArgs(target) {
     `${toMountPath(target.problemDir)}:/problem`,
     '-v',
     `${toMountPath(target.runnerDir)}:/opt/mlca/runner:ro`,
-    '--user=65534:65534',
+    `--user=${caseWriterUser()}`,
     '--workdir=/problem',
     target.image ?? JUDGE_IMAGE_DEFAULT,
     'python',

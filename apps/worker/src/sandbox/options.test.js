@@ -192,10 +192,32 @@ test('컨테이너 이름이 제출마다 달라질 수 있게 인자로 들어�
   assert.ok(b.includes('mlca-judge-b'));
 });
 
-test('Windows 경로가 슬래시로 정규화된다', () => {
-  const args = buildRunArgs({ ...TARGET, judgeDir: 'C:\\work\\sub-1', runnerDir: 'C:\\repo\\runner' });
+test('마운트 경로가 절대경로 + 슬래시로 정규화된다', () => {
+  // 입력을 플랫폼에 맞춘다. 리눅스에서 `C:\work` 의 역슬래시는 경로 구분자가 아니라
+  // **파일명의 일부**라 정규화 대상이 아니고, 그것을 Windows 기준으로 단언하면
+  // 개발 기계에서는 초록이고 리눅스 CI 에서만 빨개진다. 실제로 그랬다.
+  const windows = process.platform === 'win32';
+  const args = buildRunArgs({
+    ...TARGET,
+    judgeDir: windows ? 'C:\\work\\sub-1' : '/work/sub-1',
+    runnerDir: windows ? 'C:\\repo\\runner' : '/repo/runner',
+  });
+
   const mounts = args.filter((_, index) => args[index - 1] === '-v');
+  assert.ok(mounts.length >= 2, '마운트가 없다 — 검사가 무의미해졌다');
+
   for (const mount of mounts) {
     assert.ok(!mount.includes('\\'), `역슬래시가 남았다: ${mount}`);
+    // 호스트 경로는 마운트 문자열의 맨 앞이다. POSIX 는 `/...`, Windows 는 `C:/...`.
+    assert.ok(/^(\/|[A-Za-z]:\/)/.test(mount), `절대경로가 아니다: ${mount}`);
   }
+});
+
+test('케이스 생성은 root 로 돌지 않는다', () => {
+  // 사용자 코드 경로와 달리 uid 가 호출자에 따라 달라진다(호스트 디렉터리에 써야 한다).
+  // 그렇다고 root 여도 되는 것은 아니다 — root 로 만든 파일은 저장소에 root 소유로 남는다.
+  const args = buildMakeCasesArgs({ containerName: 'c', problemDir: '/p', runnerDir: '/r' });
+  const user = args.find((arg) => arg.startsWith('--user='));
+  assert.ok(user, '--user 가 없다');
+  assert.notEqual(user, '--user=0:0', '케이스 생성이 root 로 돈다');
 });
