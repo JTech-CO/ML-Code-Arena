@@ -1,0 +1,54 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background-color: var(--bg-canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* 120ms fade-in 만. 슬라이드·바운스·펄스 없음 (§6.5). 무한 반복이 아니라
+   진입 시 1회이므로 §9 금지 목록에 걸리지 않는다. */
+.item {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  height: 36px;
+  padding: 0 var(--space-3);
+  font-size: 14px;
+  border-bottom: 1px solid var(--border);
+  animation: appear var(--dur-fast) ease-out;
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.handle {
+  min-width: 88px;
+  color: var(--text-primary);
+}
+
+.problem {
+  flex: 1;
+  overflow: hidden;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runtime {
+  color: var(--text-muted);
+}

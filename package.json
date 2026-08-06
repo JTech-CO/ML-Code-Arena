@@ -25,6 +25,7 @@
     "db:reset": "node --env-file-if-exists=.env tools/migrate.js reset",
     "bench:submit": "node --env-file-if-exists=.env tools/bench-submit.js",
     "e2e:api": "node --env-file-if-exists=.env tools/e2e-api.js",
+    "seed:dev": "node --env-file-if-exists=.env tools/seed-dev.js",
     "judge": "node tools/judge-cli.js",
     "judge:image": "docker build -t mlca-python:3.11 judge/image",
     "judge:fixtures": "node tools/judge-fixtures.js",
@@ -41,6 +42,7 @@
     "eslint": "^9.39.5",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.9.0",
     "pg": "^8.22.0",
     "typescript": "^5.9.3"

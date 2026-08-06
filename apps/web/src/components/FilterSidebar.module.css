@@ -1,0 +1,67 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.heading {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: block;
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: var(--radius-chip);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) ease-out,
+    color var(--dur-fast) ease-out;
+}
+
+.item:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-hover);
+}
+
+.active {
+  color: var(--text-primary);
+  background-color: var(--accent-bg);
+}
+
+/* 768~1023px: 사이드바가 접힌다 (§6.1). 필터는 가로 배치로 바꾼다 —
+   드로어를 만들 만큼 항목이 많지 않다. */
+@media (max-width: 1023px) {
+  .sidebar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+  }
+
+  .list {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}

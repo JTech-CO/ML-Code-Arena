@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 
+import { AnonQuotaBar } from './AnonQuotaBar.jsx';
 import styles from './AppShell.module.css';
 import { ThemeToggle } from './ThemeToggle.jsx';
 
@@ -54,6 +55,9 @@ export function AppShell() {
             <ThemeToggle />
           </div>
         </nav>
+
+        {/* 상단 내비 바로 아래 스트립. 잔여 3개 이하일 때만 스스로 노출된다 (§7.3). */}
+        <AnonQuotaBar />
       </header>
 
       <main id="main" className={styles.main}>

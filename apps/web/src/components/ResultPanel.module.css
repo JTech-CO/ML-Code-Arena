@@ -1,0 +1,66 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background-color: var(--bg-canvas);
+  border: 1px solid var(--border);
+  border-left: 3px solid transparent;
+  border-radius: var(--radius);
+}
+
+/* 판정 확정 시에만 좌측 색 레일이 나타난다. 이 사이트의 유일한 이벤트 모션이다 (§9).
+   판정색을 배경 뱃지로 칠하지 않는 규칙(§3.4)의 유일한 예외가 이 3px 레일이다. */
+.settled {
+  border-left-color: var(--rail);
+  transition: border-left-color 200ms ease-out;
+}
+
+.header {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+.label {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.metrics {
+  margin-left: auto;
+  color: var(--text-secondary);
+}
+
+.waiting {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.idle {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.message {
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.violations {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-3);
+  font-size: 14px;
+  color: var(--text-primary);
+  list-style: none;
+  background-color: var(--bg-inset);
+  border-radius: var(--radius);
+}
+
+.line {
+  color: var(--text-muted);
+}

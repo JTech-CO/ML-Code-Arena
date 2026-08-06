@@ -1,0 +1,9 @@
+/* 전부 mono, weight 500, 배경 없음, 아이콘 없음 (§7.2). */
+.label {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.pending {
+  color: var(--text-muted);
+}

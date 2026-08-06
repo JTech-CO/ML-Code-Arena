@@ -1,0 +1,33 @@
+.bar {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1) var(--space-6);
+  background-color: var(--accent-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.text {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-radius: var(--radius-chip);
+  cursor: pointer;
+  transition: color var(--dur-fast) ease-out;
+}
+
+.close:hover {
+  color: var(--text-primary);
+}

@@ -1,0 +1,42 @@
+.layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+.title {
+  font-size: 24px;
+}
+
+.count {
+  color: var(--text-muted);
+}
+
+@media (max-width: 1279px) {
+  .layout {
+    grid-template-columns: 200px 1fr;
+    gap: var(--space-6);
+  }
+}
+
+/* 768~1023px: 사이드바가 상단으로 접힌다 (§6.1). */
+@media (max-width: 1023px) {
+  .layout {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+}

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import js from '@eslint/js';
 import importPlugin from 'eslint-plugin-import';
 import reactPlugin from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -130,12 +131,17 @@ export default [
   {
     files: ['apps/web/src/**/*.{js,jsx}'],
     languageOptions: { globals: globals.browser },
-    plugins: { react: reactPlugin },
+    plugins: { react: reactPlugin, 'react-hooks': reactHooks },
     settings: { react: { version: '18.3' } },
     rules: {
       // JSX 안의 참조를 "사용"으로 인식시킨다. 없으면 컴포넌트 import 가
       // 전부 no-unused-vars 로 잡힌다. 자동 JSX 런타임이므로 jsx-uses-react 는 불필요하다.
       'react/jsx-uses-vars': 'error',
+
+      // 훅 의존성 누락은 "가끔 값이 안 바뀐다"로 나타나 재현이 어렵다.
+      // 의도적으로 어길 때는 그 줄에 이유와 함께 disable 을 남긴다.
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'error',
       'no-restricted-imports': restrictPackages(
         ['@mlca/api', '@mlca/worker'],
         'apps/web 은 다른 앱을 import 할 수 없습니다. HTTP 로만 통신합니다 (INV-3).',

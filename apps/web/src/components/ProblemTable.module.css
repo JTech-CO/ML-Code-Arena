@@ -1,0 +1,82 @@
+.table {
+  width: 100%;
+  font-size: 14px;
+  background-color: var(--bg-canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  border-collapse: collapse;
+  overflow: hidden;
+}
+
+.table th {
+  padding: var(--space-2) var(--space-3);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: left;
+  background-color: var(--bg-subtle);
+  border-bottom: 1px solid var(--border);
+}
+
+.table td {
+  height: 40px;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* 호버는 배경색 변화만. 이동·스케일·그림자 없음 (§6.3). */
+.row {
+  cursor: pointer;
+  transition: background-color var(--dur-fast) ease-out;
+}
+
+.row:hover {
+  background-color: var(--bg-hover);
+}
+
+.title {
+  color: var(--text-primary);
+}
+
+.numberCol {
+  width: 48px;
+  color: var(--text-muted);
+}
+
+.tierCol {
+  width: 40px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.rateCol {
+  width: 72px;
+  text-align: right;
+  color: var(--text-secondary);
+}
+
+.statusCol {
+  width: 88px;
+  text-align: right;
+}
+
+.restrictionCol {
+  width: 220px;
+}
+
+/* 미해결은 빈 칸이 아니라 가운뎃점. 빈 칸이면 열이 무너져 보인다 (§6.3). */
+.unsolved {
+  color: var(--text-muted);
+}
+
+/* < 768px: 제한·단계 열을 감춘다. 제목과 상태가 우선이다 (§6.1). */
+@media (max-width: 767px) {
+  .restrictionCol,
+  .tierCol {
+    display: none;
+  }
+}

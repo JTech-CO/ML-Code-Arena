@@ -1,0 +1,21 @@
+.group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/* 목록에서는 절대 두 줄이 되지 않는다. 행 높이 40px 가 무너지면 한 화면에
+   15행이 들어가지 않고, 목록을 훑는 것이 그 화면의 유일한 목적이다 (§6.3). */
+.compact {
+  flex-wrap: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.chip {
+  padding: 2px var(--space-2);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  background-color: var(--bg-inset);
+  border-radius: var(--radius-chip);
+}

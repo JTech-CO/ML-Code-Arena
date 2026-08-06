@@ -1,0 +1,94 @@
+/* 최대 폭 720px, 중앙 정렬 (§6.6). */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  gap: var(--space-4);
+  align-items: baseline;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.title {
+  font-size: 32px;
+  line-height: 1.25;
+}
+
+.tier {
+  margin-left: auto;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.body {
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.body :global(h2) {
+  margin-top: var(--space-8);
+  margin-bottom: var(--space-3);
+  font-size: 24px;
+}
+
+.body :global(p) {
+  margin-bottom: var(--space-4);
+}
+
+.body :global(code) {
+  padding: 1px var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 0.9375em;
+  background-color: var(--bg-inset);
+  border-radius: var(--radius-chip);
+}
+
+.body :global(pre) {
+  padding: var(--space-3);
+  overflow-x: auto;
+  background-color: var(--bg-inset);
+  border-radius: var(--radius);
+}
+
+.linked {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border);
+}
+
+.linkedTitle {
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.linkedList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.linkedItem {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  font-size: 15px;
+}
+
+.relation {
+  color: var(--text-muted);
+}
+
+.back {
+  font-size: 14px;
+}
