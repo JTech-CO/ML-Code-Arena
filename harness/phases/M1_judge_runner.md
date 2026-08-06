@@ -48,24 +48,46 @@ node tools/judge-cli.js --problem gd-1d --source judge/fixtures/wa.py | grep -c 
 ### 이미 통과한 것 (Docker 불필요)
 
 ~~~
-$ python -m unittest discover -s judge/tests -p "test_*.py"
-Ran 36 tests ... OK
+$ python -m unittest discover -s judge/tests -p "test_*.py"    Ran 46 tests ... OK
+$ pnpm test                                                    42건 (shared 13 + worker 29)
+$ pnpm typecheck / lint / check:boundaries / build              전부 PASS
+$ python -m py_compile (judge/ 전 파일)                         전부 ok, ce.py 만 의도대로 실패
 ~~~
 
-러너의 **판정을 가르는 순수 로직**(정적 검사·비교·직렬화)을 결정론적으로 확인했다.
-격리는 컨테이너가 있어야 하지만, 정적 검사 규칙 하나가 조용히 무너지면 `FBD` 가 `AC` 로
-바뀌고 그건 컨테이너를 아무리 잘 잠가도 막지 못한다.
+격리는 컨테이너가 있어야 하지만, **판정을 가르는 로직**은 컨테이너 없이 확인할 수 있다.
+정적 검사 규칙 하나가 조용히 무너지면 `FBD` 가 `AC` 로 바뀌고, 그건 컨테이너를 아무리
+잘 잠가도 막지 못한다.
 
-이 테스트가 **실제 버그 1건을 잡았다**: `allowed_imports` 화이트리스트에 있는 모듈이
-문제별 블랙리스트에도 있으면 거부되고 있었다. ADR-0002 는 화이트리스트가 이긴다고
-정했으므로 위반이다. 우선순위를 하드 차단 > 화이트리스트 > 문제별 블랙리스트로 확정했다.
+**테스트가 잡은 실제 버그 2건**
+1. `allowed_imports` 화이트리스트에 있는 모듈이 문제별 블랙리스트에도 있으면 거부됐다.
+   ADR-0002 는 화이트리스트가 이긴다고 정했으므로 위반이다. 우선순위를
+   하드 차단 > 화이트리스트 > 문제별 블랙리스트로 확정했다.
+2. **`case_count` 가 0 이면 모든 제출이 `AC` 가 됐다.** 케이스 루프가 한 번도 돌지 않고
+   그대로 통과 판정으로 떨어진다. 케이스 적재에 실패한 문제에 제출하면 전원 정답이 된다.
+   spec 로더가 최소 1건을 요구하도록 고쳐 `IE` 로 끊는다.
 
-INV-5·INV-7 은 단위 테스트로도 직접 검증된다.
-- 불일치 상세에 기대 수치·dict 키 이름이 실리지 않는지 (INV-5)
-- dtype 이 객체인 `.npy` 를 손으로 만들어 npz 에 넣었을 때 로더가 거부하는지 (INV-7)
+**호스트 종단 확인** (임시 스크립트, 23건 전부 통과). `make_cases.py` 는 `resource` 를
+import 하지 않아 호스트에서 돌릴 수 있다. 실제 파일을 거쳐 확인한 것:
+- 케이스 생성이 되고, **재생성 해시가 동일**하다 (INV-10 의 `--verify` 가 성립할 전제)
+- 기준 구현이 전 케이스를 통과한다 (`AC` 경로)
+- `wa.py` → `value_mismatch`, `wa_shape.py` → `shape_mismatch` 로 의도대로 갈린다
+- 제출 샘플 8종이 정적 검사에서 각각 의도한 결과를 낸다
+- `network.py` 가 엄격 문제에서는 정적 검사에 걸리고 느슨한 문제에서는 통과한다
+  (두 방어층이 실제로 분리돼 있다는 증거)
 
-또한 M0 게이트 5종이 M1 코드 추가 후에도 전부 그린이다
-(`build` / `typecheck` / `lint` / `test` / `check:boundaries`).
+호스트에서 만든 케이스는 삭제했다. 기대값은 채점이 실제로 도는 numpy 버전에서
+나와야 한다 (호스트 2.3.4 / 컨테이너 2.4.6).
+
+**불변식 직접 검증** (단위 테스트)
+- INV-5 — 불일치 상세에 기대 수치·dict 키 이름이 실리지 않는다
+- INV-7 — dtype 이 객체인 `.npy` 를 손으로 만들어 npz 에 넣으면 로더가 거부한다
+- INV-4 — 격리 플래그 회귀 가드. 필수 플래그 존재, 마운트 전부 `:ro`,
+  메모리와 swap 동일, `--privileged`·`--network=host`·`seccomp=unconfined` 부재
+- RUNBOOK 23 — 기준 구현이 자기 문제의 제한을 통과하는지. 출제자가 제한을 잘못 걸면
+  정답 코드가 `FBD` 로 떨어지고, 그 오류는 사용자가 신고하기 전까지 발견되지 않는다
+
+`MLE` 와 `TLE` 를 가르는 분류 로직도 덮었다. cgroup OOM 도 SIGKILL 도 똑같이 137 로
+나타나므로 OOM 플래그를 먼저 보지 않으면 메모리 초과가 시간 초과로 보고된다.
 
 ### 남은 것 (Docker 필요)
 

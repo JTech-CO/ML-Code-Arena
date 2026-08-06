@@ -197,7 +197,12 @@ export function buildPidsProbeArgs(target) {
  * numpy 버전과 같은 곳에서 확인해야 한다. 호스트 numpy 가 다르면 통과가 통과를
  * 보장하지 않는다.
  *
- * @param {{ containerName: string, runnerDir: string, testsDir: string, image?: string }} target
+ * `fixturesDir` 를 `/opt/mlca/fixtures` 에 붙이는 이유: 테스트가 문제 정의를 읽어
+ * "기준 구현이 자기 문제의 제한을 통과하는가"를 확인한다. 호스트에서는
+ * `judge/tests` -> `judge/fixtures`, 컨테이너에서는 `/opt/mlca/tests` -> `/opt/mlca/fixtures`
+ * 로 같은 상대 경로가 성립하도록 맞췄다.
+ *
+ * @param {{ containerName: string, runnerDir: string, testsDir: string, fixturesDir: string, image?: string }} target
  * @returns {string[]}
  */
 export function buildUnitTestArgs(target) {
@@ -216,6 +221,8 @@ export function buildUnitTestArgs(target) {
     `${toMountPath(target.runnerDir)}:/opt/mlca/runner:ro`,
     '-v',
     `${toMountPath(target.testsDir)}:/opt/mlca/tests:ro`,
+    '-v',
+    `${toMountPath(target.fixturesDir)}:/opt/mlca/fixtures:ro`,
     '--user=65534:65534',
     '--workdir=/tmp',
     target.image ?? JUDGE_IMAGE_DEFAULT,

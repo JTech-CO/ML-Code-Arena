@@ -330,5 +330,71 @@ class CompareTest(unittest.TestCase):
         self.assertNotIn("secret_answer", repr(result.to_dict()))
 
 
+#: 호스트에서는 judge/tests -> judge/fixtures, 컨테이너에서는
+#: /opt/mlca/tests -> /opt/mlca/fixtures. 같은 상대 경로가 성립하도록 마운트를 맞췄다.
+FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
+
+
+class ProblemDefinitionTest(unittest.TestCase):
+    """문제 정의 자체의 건전성.
+
+    출제자가 제한을 잘못 걸면 **정답 코드가 `FBD` 로 떨어진다**(RUNBOOK 23번).
+    그 오류는 사용자가 신고하기 전까지 발견되지 않는다. 기준 구현을 자기 문제의
+    제한으로 검사해 두면 출제 시점에 걸린다.
+
+    M6 에서 문제 30개를 올릴 때 `problem-sync --verify` 가 같은 검사를 해야 한다.
+    """
+
+    def problem_dirs(self):
+        root = FIXTURES_DIR / "problems"
+        if not root.is_dir():
+            self.skipTest(f"픽스처 문제 디렉터리가 없다: {root}")
+        return sorted(p for p in root.iterdir() if (p / "problem.json").is_file())
+
+    def test_기준_구현이_자기_문제의_제한을_통과한다(self):
+        import json
+
+        for problem_dir in self.problem_dirs():
+            with self.subTest(problem=problem_dir.name):
+                problem = json.loads((problem_dir / "problem.json").read_text(encoding="utf-8"))
+                source = (problem_dir / "reference.py").read_text(encoding="utf-8")
+
+                violations = ast_check.check(source, problem.get("restrictions", {}))
+                self.assertEqual(
+                    [v.rule for v in violations],
+                    [],
+                    f"{problem_dir.name}: 기준 구현이 제한에 걸린다 — 제한을 잘못 걸었다",
+                )
+
+    def test_문제가_엔트리포인트를_실제로_가지고_있다(self):
+        import ast as ast_mod
+        import json
+
+        for problem_dir in self.problem_dirs():
+            with self.subTest(problem=problem_dir.name):
+                problem = json.loads((problem_dir / "problem.json").read_text(encoding="utf-8"))
+                entrypoint = problem["entrypoint"]
+                tree = ast_mod.parse((problem_dir / "reference.py").read_text(encoding="utf-8"))
+
+                names = {
+                    node.name
+                    for node in ast_mod.walk(tree)
+                    if isinstance(node, (ast_mod.FunctionDef, ast_mod.AsyncFunctionDef))
+                }
+                self.assertIn(entrypoint, names, f"{problem_dir.name}: reference.py 에 없다")
+
+    def test_모든_문제가_제한을_필수로_갖는다(self):
+        # ADR-0002 — 제한이 선택이면 출제자가 빠뜨리고, 빠뜨린 문제는 라이브러리 한 줄로 풀린다.
+        import json
+
+        for problem_dir in self.problem_dirs():
+            with self.subTest(problem=problem_dir.name):
+                problem = json.loads((problem_dir / "problem.json").read_text(encoding="utf-8"))
+                restrictions = problem.get("restrictions")
+                self.assertIsInstance(restrictions, dict, "restrictions 가 없다")
+                self.assertIn("allowed_imports", restrictions, "화이트리스트가 없다")
+                self.assertEqual(restrictions.get("required_entrypoint"), problem["entrypoint"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

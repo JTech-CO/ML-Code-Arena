@@ -171,6 +171,7 @@ async function checkRunnerUnits() {
       containerName,
       runnerDir: RUNNER_DIR,
       testsDir: path.join(ROOT, 'judge', 'tests'),
+      fixturesDir: FIXTURES,
     }),
     containerName,
   );

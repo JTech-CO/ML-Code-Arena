@@ -129,7 +129,13 @@ test('위험한 플래그가 어떤 경로에도 없다', () => {
     ],
     [
       'buildUnitTestArgs',
-      () => buildUnitTestArgs({ containerName: 'c', runnerDir: '/r', testsDir: '/t' }),
+      () =>
+        buildUnitTestArgs({
+          containerName: 'c',
+          runnerDir: '/r',
+          testsDir: '/t',
+          fixturesDir: '/f',
+        }),
     ],
   ];
 
@@ -157,6 +163,21 @@ test('케이스 생성은 문제 디렉터리에 쓰지만 네트워크는 여�
   assert.ok(args.includes('--network=none'));
   assert.ok(args.some((arg) => arg.endsWith(':/problem')), '문제 디렉터리는 쓰기 가능해야 한다');
   assert.ok(args.some((arg) => arg.endsWith(':/opt/mlca/runner:ro')));
+});
+
+test('단위 테스트 컨테이너의 마운트가 전부 읽기 전용이다', () => {
+  // 테스트가 문제 정의를 읽되 고칠 수는 없어야 한다.
+  const args = buildUnitTestArgs({
+    containerName: 'c',
+    runnerDir: '/r',
+    testsDir: '/t',
+    fixturesDir: '/f',
+  });
+  const mounts = args.filter((_, index) => args[index - 1] === '-v');
+  assert.equal(mounts.length, 3);
+  for (const mount of mounts) {
+    assert.ok(mount.endsWith(':ro'), `읽기 전용이 아니다: ${mount}`);
+  }
 });
 
 test('컨테이너 이름이 제출마다 달라질 수 있게 인자로 들어온다', () => {
