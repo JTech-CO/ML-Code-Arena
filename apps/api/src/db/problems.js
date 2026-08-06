@@ -17,7 +17,22 @@ export async function findBySlug(slug) {
       WHERE p.slug = $1`,
     [slug],
   );
-  return result.rows[0] ?? null;
+
+  const problem = result.rows[0];
+  if (!problem) return null;
+
+  // 문제 → 개념 이동도 1클릭이어야 한다 (docs/DESIGN.md §6.6). 개념 쪽에서만 링크를
+  // 걸면 사용자는 "이 문제가 어떤 개념인지" 알려면 개념 목록을 뒤져야 한다.
+  const concepts = await getPool().query(
+    `SELECT c.slug, c.title, l.relation
+       FROM concept_problem_links l
+       JOIN concepts c ON c.id = l.concept_id
+      WHERE l.problem_id = $1
+      ORDER BY l.relation, c.title`,
+    [problem.id],
+  );
+
+  return { ...problem, concepts: concepts.rows };
 }
 
 /**

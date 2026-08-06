@@ -3,15 +3,15 @@
 > 이 팩에서 **매 세션 바뀌는 유일한 파일**. 세션이 끊겨도 이 파일만 읽으면 이어서 작업 가능해야 한다.
 
 ## 현재 상태
-- **현재 phase**: M4 완료 → **M5(프론트엔드 3트랙) 진입 가능**
-- **상태**: **M0~M4 전부 DoD 통과.**
-  M1 25/25 · M2 7/7 · M3 10/10 · M4 8/8 · 단위 71건 · 종단 6/6 · 대비 112조합.
-- **마지막 갱신**: 2026-08-06, M0~M4 구현 세션
+- **현재 phase**: M5 완료 → **M6(문제 30개 + 개념 문서) 진입 가능**
+- **상태**: **M0~M5 전부 DoD 통과.**
+  M1 25/25 · M2 7/7 · M3 10/10 · M4 8/8 · M5 12/12 · 단위 71건 · 종단 6/6.
+- **마지막 갱신**: 2026-08-06, M0~M5 구현 세션
 - **저장소 경로**: `C:\Users\MSI\Desktop\ml-code-arena` — **비ASCII 경로로 되돌리지 말 것**
   (pnpm 네이티브 링커가 죽는다. 아래 막힘 기록)
 
-**한 줄 요약**: 백엔드는 끝났고 프론트는 껍데기까지 섰다. 토큰·테마·3트랙 라우팅이
-동작하며 화면 내용만 M5 가 채우면 된다.
+**한 줄 요약**: 제품이 동작한다. 브라우저에서 문제를 고르고 코드를 쓰고 제출하면
+격리 컨테이너에서 채점되어 왜 틀렸는지가 화면에 돌아온다. **내용물만 비어 있다.**
 
 ## 직전에 끝낸 것
 - 기술/디자인 백서 Phase 1 v0.1.0, 작업 하네스 팩 인스턴스화 (이전 세션)
@@ -31,34 +31,34 @@
   - `harness/docs/FILE_TREE.md` v0.2.0 — 경계 강제 수단 2종 명시, 신규 파일 반영
 
 ## 다음 할 일
-1. **M5(프론트엔드 3트랙) 진입.** `phases/M5_frontend.md`.
-   `docs/DESIGN.md` §6·§7·§9·§10·§11·§12 를 읽는다.
-2. M5 작업 시 프론트 쪽에서 알아둘 것:
-   - **색을 컴포넌트에 직접 쓰지 말 것.** `pnpm check:design` 이 `.jsx` 와 `.css` 양쪽에서
-     막는다. 새 색이 필요하면 `tokens.css` 에 토큰으로 추가하고 `pnpm check:contrast` 를
-     돌린다 — 전 배경 조합 4.5:1 을 넘어야 한다 (INV-12).
-   - 판정 색 토큰은 `--verdict-{ac,wa,tle,mle,fbd,re,ce,ie,pending}` 로 이미 있다.
-     `VerdictLabel` 은 **색과 함께 판정 코드 텍스트를 반드시 병기**한다 (INV-11).
-   - 상태는 zustand. 테마 스토어(`stores/theme.js`)가 패턴이다 — 초기값을
-     `localStorage` 가 아니라 DOM 에서 읽는다. 인라인 스크립트가 이미 확정했으므로
-     두 곳이 판단하면 어긋난다.
-   - 호버는 **배경색 변화만**. 이동·스케일·그림자는 린트가 막는다 (§6.3).
-   - 채점 대기는 스피너가 아니라 `채점 중 · 대기 3번째` 텍스트다 (§9).
-3. M5 작업 시 API 쪽에서 알아둘 것:
-   - **응답 필드는 `apps/api/src/serialize.js` 가 통과 목록으로 고정한다.** 프론트가
-     필요한 필드가 없으면 거기 추가한다. DB 행을 그대로 내보내는 우회를 만들지 말 것 (INV-5).
-   - 제출 상세의 `detail` 은 `reason`·`expected_shape`·`actual_shape`·`violations` 등
-     **형태 정보만** 담는다. `ShapeDiff` 와 `VerdictLabel` 이 이 값을 쓴다.
-   - SSE 는 `GET /api/stream/submissions`. 이벤트 키는
-     `id·handle·problem·verdict·runtime_ms` 다섯이며 익명 제출은 오지 않는다.
-   - CORS 는 `CORS_ORIGINS`(기본 `http://localhost:5173`)이고 `credentials: true` 다.
-     세션 쿠키가 오가야 하므로 `origin` 을 반사로 두면 안 된다.
-   - 익명 잔여 문제 수는 `GET /api/auth/me` 의 `anonymous.remaining` 이다.
-     `AnonQuotaBar` 가 이 값을 쓴다.
-3. 미해결: Docker rootless 운용 여부 (ADR-0007 후보). 워커에 Docker 소켓을 주는 것은
+1. **M6(문제 30개 + 개념 문서) 진입.** `phases/M6_content.md`. 이 프로젝트에서 **가장 오래
+   걸리는 phase**다. 화면과 채점기가 다 됐으므로 남은 것은 내용물이다.
+2. M6 작업 시 알아둘 것:
+   - **`tools/seed-dev.js` 의 표본 문제 17개(`p001`~`p017`)는 M6 가 지운다.** 케이스 파일이
+     없어 채점되지 않는 껍데기이며, `problem-sync` 가 실제 문제를 넣을 때 함께 정리한다.
+   - 케이스 생성 경로는 이미 있다 — `node tools/judge-cli.js --prepare --problem <slug>` 가
+     컨테이너에서 `reference.py` 로 기대값을 만든다 (INV-10). **호스트에서 만들면 안 된다** —
+     numpy 버전 차이로 정답이 `WA` 가 되는 것을 M1 에서 실측했다.
+   - **기준 구현이 자기 문제의 제한을 통과하는지 반드시 확인한다.** 출제자가 제한을 잘못
+     걸면 정답이 `FBD` 로 떨어지고 사용자가 신고하기 전까지 아무도 모른다 (RUNBOOK 23).
+     `judge/tests` 의 `ProblemDefinitionTest` 가 픽스처에 대해 이미 이 검사를 한다 —
+     `problem-sync --verify` 가 같은 검사를 실제 30문제에 해야 한다.
+   - 문제 목록의 **태그 필터가 비어 있다.** `GET /api/problems` 가 태그를 돌려주지 않아
+     사이드바를 채울 수 없다. 문제에 태그가 붙을 때 API 와 함께 뚫는다.
+3. 프론트를 손볼 때 지킬 것:
+   - **색을 컴포넌트에 직접 쓰지 말 것.** `pnpm check:design` 이 `.jsx`·`.css` 양쪽에서 막는다.
+     새 색이 필요하면 `tokens.css` 에 넣고 `pnpm check:contrast` 를 돌린다 (INV-12).
+   - `VerdictLabel` 은 색과 판정 코드 텍스트를 **항상 함께** 낸다 (INV-11).
+   - 호버는 배경색 변화만. 대기는 스피너가 아니라 큐 순번 텍스트 (§9).
+   - 응답 필드는 `apps/api/src/serialize.js` 통과 목록이 정한다. 필요한 필드가 없으면
+     거기 추가하고, DB 행을 그대로 내보내는 우회를 만들지 말 것 (INV-5).
+   - **web 과 api 는 같은 출처여야 한다.** 개발은 Vite 프록시로 맞춰 두었다.
+     교차 출처면 `SameSite=Lax` 세션 쿠키가 실리지 않아 익명 한도와 계정 승계가 깨진다.
+4. 미해결: Docker rootless 운용 여부 (ADR-0007 후보). 워커에 Docker 소켓을 주는 것은
    사실상 호스트 루트 권한이다. M7 배포 설계 전에는 정해야 한다.
-4. M7 에서 반드시 다룰 것: `trustProxy` 신뢰 범위(지금은 `X-Forwarded-For` 미신뢰라
-   프록시 뒤에서 익명 IP 가 하나로 묶인다), Redis 재기동 시 전원 로그아웃, SSE 프록시 검증.
+5. M7 에서 반드시 다룰 것: `trustProxy` 신뢰 범위(지금은 `X-Forwarded-For` 미신뢰라
+   프록시 뒤에서 익명 IP 가 하나로 묶인다), Redis 재기동 시 전원 로그아웃, SSE 프록시 검증,
+   그리고 **web·api 동일 출처 배치**.
 
 ## M1 확정 게이트 (재실행 명령)
 ~~~bash
@@ -150,6 +150,18 @@ pnpm judge:fixtures     # 게이트 24건 — 판정 8종 + 격리 불변식 + �
 | M4 | DoD 6 활성 트랙 | 브라우저 실측 | PASS · 2px accent 밑줄, 볼드·배경 미사용 | 2026-08-06 |
 | M4 | DoD 7 reduced-motion | CSSOM + 주입 측정 | PASS · 0.12s → 1e-05s → 복귀 | 2026-08-06 |
 | M4 | DoD 8 서체 2종 | `pnpm check:design` | PASS · sans + mono | 2026-08-06 |
+| M5 | DoD 1 전체 흐름 | 브라우저 실측 | PASS · 문제 선택→작성→제출→`AC` 완주 | 2026-08-06 |
+| M5 | DoD 2 판정 8종 | SSE 로 8종 렌더 | PASS · 8/8, 빈 칸·undefined 0 | 2026-08-06 |
+| M5 | DoD 3 ShapeDiff(INV-5) | 실제 WA 제출 | PASS · `(3,3)` vs `(9,)`, 기대 수치 없음 | 2026-08-06 |
+| M5 | DoD 4 색 단독 금지(INV-11) | 위 | PASS · 판정 코드 텍스트 항상 병기 | 2026-08-06 |
+| M5 | DoD 5 목록 밀도 | 1920×1080 | PASS · 행 43px, **19행 전부 노출** | 2026-08-06 |
+| M5 | DoD 6 SSE·익명 제외 | 위 | PASS · 8건 수신, 익명 0건 | 2026-08-06 |
+| M5 | DoD 7 개념↔문제 | API + 화면 | PASS · 양방향 1클릭 | 2026-08-06 |
+| M5 | DoD 8 AnonQuotaBar | 잔여 3 상태 | PASS · 노출·닫기 동작 | 2026-08-06 |
+| M5 | DoD 9 반응형 | 1280/1024/768/375 | PASS · 전 라우트 가로 스크롤 0 | 2026-08-06 |
+| M5 | DoD 10 키보드 | 브라우저 실측 | PASS · 방향키·Enter·**Ctrl+Enter 제출** | 2026-08-06 |
+| M5 | DoD 11 스크린리더 | DOM | PASS · `role=status` `aria-live=polite` | 2026-08-06 |
+| M5 | DoD 12 금지 목록 | `pnpm check:design` | PASS · 47파일 위반 **0건** | 2026-08-06 |
 
 ## 막힘 기록 (STOP 발동 시)
 

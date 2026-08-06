@@ -132,6 +132,13 @@ export function problemDetail(row) {
     memory_limit_mb: row.memory_limit_mb,
     compare_options: row.compare_options ?? {},
     statement_md: row.statement_md ?? '',
+    concepts: Array.isArray(row.concepts)
+      ? row.concepts.map((concept) => ({
+          slug: concept.slug,
+          title: concept.title,
+          relation: concept.relation,
+        }))
+      : [],
   };
 }
 
