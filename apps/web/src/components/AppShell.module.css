@@ -1,0 +1,112 @@
+.shell {
+  min-height: 100vh;
+}
+
+/* 키보드 사용자가 내비를 매번 통과하지 않게 한다. 포커스를 받을 때만 나타난다. */
+.skipLink {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 2;
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-primary);
+  background-color: var(--bg-canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transform: translateY(-200%);
+}
+
+.skipLink:focus {
+  transform: translateY(0);
+}
+
+/* 상시 고정. 문제 목록을 스크롤하는 동안에도 트랙 이동이 한 번에 되어야 한다 (§6.2). */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--bg-canvas);
+  border-bottom: 1px solid var(--border);
+  transition: background-color var(--dur-base) ease-out;
+}
+
+.nav {
+  display: flex;
+  gap: var(--space-6);
+  align-items: center;
+  height: var(--nav-height);
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+}
+
+.brand {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.brand:hover {
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.tracks {
+  display: flex;
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.track {
+  display: inline-flex;
+  align-items: center;
+  height: var(--nav-height);
+  font-size: 15px;
+  color: var(--text-secondary);
+
+  /* 밑줄 자리를 미리 잡아 둔다. 활성화될 때 글자가 밀리면 안 된다. */
+  border-bottom: 2px solid transparent;
+  transition: color var(--dur-fast) ease-out;
+}
+
+.track:hover {
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.trackActive {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-left: auto;
+}
+
+.main {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6);
+}
+
+/* < 768px: 단일 열. 좌우 여백을 줄여 목록의 가로 공간을 확보한다 (§6.1). */
+@media (max-width: 767px) {
+  .nav {
+    gap: var(--space-4);
+    padding: 0 var(--space-4);
+  }
+
+  .tracks {
+    gap: var(--space-4);
+  }
+
+  .main {
+    padding: var(--space-6) var(--space-4);
+  }
+}

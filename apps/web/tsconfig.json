@@ -1,11 +1,17 @@
 {
+  // CSS 모듈의 클래스명은 인덱스 시그니처라 noUncheckedIndexedAccess 아래서
+  // `string | undefined` 가 된다. React 의 prop 타입은 `prop?: T` 와 `prop?: T | undefined` 를
+  // 구분하지 않는 관례로 쓰여 있어, 그 조합이 className 마다 오류를 낸다.
+  // 우리 코드의 안전성 문제가 아니라 플래그와 생태계 관례의 불일치이므로 web 에서만 끈다.
+  // api·worker·shared 는 켜 둔 채로 두며, 거기서는 실제 값을 잡아냈다.
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "exactOptionalPropertyTypes": false
   },
   "include": ["src/**/*.js", "src/**/*.jsx", "vite.config.js"]
 }

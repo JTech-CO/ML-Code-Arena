@@ -1,37 +1,56 @@
-import { VERDICTS, VERDICT_META } from '@mlca/shared';
+import { Navigate, Route, Routes } from 'react-router-dom';
+
+import { AppShell } from './components/AppShell.jsx';
+import { PlaceholderPage } from './routes/PlaceholderPage.jsx';
 
 /**
- * M0 스캐폴딩 확인용 임시 화면.
+ * 3트랙 라우팅 (docs/DESIGN.md §6.2).
  *
- * 실제 화면은 M4(디자인 토큰 + AppShell) 확정 후 M5 에서 만든다.
- * 여기서는 `packages/shared` 의 판정 코드가 웹 번들까지 도달하는지만 확인한다.
- * 스타일을 넣지 않는 것은 의도다 — 토큰이 확정되기 전 임시 스타일은 M4 에서 전부 걷어내야 한다.
+ * 화면 내용은 M5 가 채운다. M4 는 토큰과 껍데기까지다 — 토큰이 흔들리면 컴포넌트를
+ * 전부 다시 손대야 하므로 토큰을 먼저 확정한다.
  */
 export function App() {
   return (
-    <main>
-      <h1>ML Code Arena</h1>
-      <p>M0 스캐폴딩. 화면은 M4·M5 에서 구현한다.</p>
-
-      <h2>판정 코드</h2>
-      <table>
-        <thead>
-          <tr>
-            <th scope="col">코드</th>
-            <th scope="col">의미</th>
-            <th scope="col">발생 조건</th>
-          </tr>
-        </thead>
-        <tbody>
-          {VERDICTS.map((code) => (
-            <tr key={code}>
-              <td>{code}</td>
-              <td>{VERDICT_META[code].meaning}</td>
-              <td>{VERDICT_META[code].cause}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </main>
+    <Routes>
+      <Route element={<AppShell />}>
+        <Route index element={<Navigate to="/problems" replace />} />
+        <Route
+          path="/problems"
+          element={
+            <PlaceholderPage
+              title="문제집"
+              note="단계·태그·상태 필터와 문제 목록이 이 자리에 온다. M5 에서 구현한다."
+            />
+          }
+        />
+        <Route
+          path="/concepts"
+          element={
+            <PlaceholderPage
+              title="유형 설명"
+              note="개념 문서와 문제 사이의 양방향 링크가 이 자리에 온다. M5·M6 에서 구현한다."
+            />
+          }
+        />
+        <Route
+          path="/ranking"
+          element={
+            <PlaceholderPage
+              title="랭킹"
+              note="해결 문제 수 기준 랭킹표와 실시간 제출 스트림이 이 자리에 온다. M5 에서 구현한다."
+            />
+          }
+        />
+        <Route
+          path="*"
+          element={
+            <PlaceholderPage
+              title="페이지를 찾을 수 없습니다"
+              note="주소를 다시 확인해 주세요."
+            />
+          }
+        />
+      </Route>
+    </Routes>
   );
 }

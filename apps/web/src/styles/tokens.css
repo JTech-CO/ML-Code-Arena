@@ -1,0 +1,109 @@
+/*
+ * 디자인 토큰 — docs/DESIGN.md §3·§4·§5, 부록 A.
+ *
+ * **색 리터럴은 이 파일에만 존재한다.** 컴포넌트가 색을 직접 쓰는 순간 다크 모드가
+ * 조용히 깨진다. 라이트에서 멀쩡해 보이므로 발견이 늦다.
+ * `pnpm design:lint` 가 이 규칙을 강제한다.
+ *
+ * 색 구성: 중성색 1계열 + accent 1색 + 판정 상태색. 그 외의 색은 없다.
+ * 판정색이 예외인 근거는 "이 색이 없으면 정보 전달이 깨지는가"를 통과하기 때문이다 —
+ * 제출 목록에서 성공과 실패를 스캔하는 것은 색 없이 불가능하다. 다만 색만으로
+ * 구분하지 않고 판정 코드 텍스트를 항상 병기한다 (INV-11).
+ */
+
+:root {
+  --font-sans: 'Pretendard Variable', Pretendard, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --radius: 6px;
+  --radius-chip: 4px;
+
+  --dur-fast: 120ms;
+  --dur-base: 150ms;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --nav-height: 56px;
+  --content-max: 1280px;
+
+  /* 그림자는 "떠 있어야 하는 것"에만. 카드에는 쓰지 않는다 (§5.3).
+     구분의 기본 수단은 1px 경계선과 배경색 차이다. */
+  --shadow-popover: 0 4px 12px rgb(0 0 0 / 10%);
+  --shadow-modal: 0 8px 32px rgb(0 0 0 / 16%);
+}
+
+/* 라이트가 기본값이다. OS 가 다크여도 저장값이 없으면 라이트로 뜬다 (ADR-0006).
+   `prefers-color-scheme` 를 읽지 않는 것은 의도다 — 읽으면 기본값이 둘로 갈라진다. */
+:root,
+:root[data-theme='light'] {
+  --bg-canvas: #ffffff;
+  --bg-subtle: #f6f7f8;
+  --bg-inset: #eef0f2;
+  --bg-hover: #f0f1f3;
+
+  --border: #d8dce0;
+  --border-strong: #bfc5cb;
+
+  --text-primary: #16191d;
+  --text-secondary: #565e68;
+
+  /* 백서 §3.2 의 #6B737D 에서 내렸다. 그 값은 --bg-canvas 위에서만 4.5:1 을 넘고
+     --bg-subtle·--bg-inset·--bg-hover 위에서는 4.2~4.48:1 로 미달한다. 그 배경들은
+     페이지 바탕·코드 블록·행 호버라 muted 텍스트가 실제로 얹히는 자리다 (INV-12). */
+  --text-muted: #666d77;
+
+  --accent: #1f5fa8;
+  --accent-hover: #184c87;
+  --accent-bg: #eaf1f9;
+
+  --verdict-ac: #1a7a45;
+  --verdict-wa: #b32a28;
+  --verdict-tle: #986006;
+  --verdict-mle: #986006;
+  --verdict-fbd: #6b3fa0;
+  --verdict-re: #666d77;
+  --verdict-ce: #666d77;
+  --verdict-ie: #666d77;
+  --verdict-pending: #666d77;
+}
+
+/* 순수 검정을 쓰지 않는다 (INV-12). #000 위의 밝은 텍스트는 대비가 과해
+   장시간 읽기에 눈이 빨리 피로해진다. */
+:root[data-theme='dark'] {
+  --bg-canvas: #16181c;
+  --bg-subtle: #1d2025;
+  --bg-inset: #24282e;
+  --bg-hover: #262a30;
+
+  --border: #2e333a;
+  --border-strong: #3d444d;
+
+  --text-primary: #e4e7eb;
+  --text-secondary: #a8b0b9;
+
+  /* 백서 §3.3 의 #7C858F 에서 올렸다. 라이트와 같은 이유다 — canvas 밖의 배경 위에서
+     3.85~4.36:1 로 미달했다 (INV-12). */
+  --text-muted: #88929c;
+
+  --accent: #5b9be0;
+  --accent-hover: #79afe8;
+  --accent-bg: #1a2735;
+
+  --verdict-ac: #4ebe7f;
+  --verdict-wa: #e8706b;
+  --verdict-tle: #d9a23d;
+  --verdict-mle: #d9a23d;
+  --verdict-fbd: #a98cdb;
+  --verdict-re: #8b939d;
+  --verdict-ce: #8b939d;
+  --verdict-ie: #8b939d;
+  --verdict-pending: #88929c;
+}

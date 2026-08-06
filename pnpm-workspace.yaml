@@ -18,3 +18,6 @@ allowBuilds:
   # (~2800 judgements/hour) does not need it. Denied rather than allowed:
   # a native build script we do not need is attack surface we do not need.
   msgpackr-extract: false
+
+minimumReleaseAgeExclude:
+  - lucide-react@1.29.0

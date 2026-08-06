@@ -16,6 +16,8 @@
     "lint:fix": "eslint . --fix",
     "test": "pnpm -r run test",
     "check:boundaries": "node tools/check-boundaries.js",
+    "check:contrast": "node tools/contrast-check.js",
+    "check:design": "node tools/design-lint.js",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:migrate": "node --env-file-if-exists=.env tools/migrate.js up",
