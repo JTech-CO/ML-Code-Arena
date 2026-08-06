@@ -19,7 +19,35 @@ import { createRateLimiter } from '../src/rate-limit.js';
 import { buildServer } from '../src/server.js';
 import { createSubmissionStream } from '../src/sse/stream.js';
 
-const DATABASE_URL = process.env['DATABASE_URL'] ?? 'postgres://mlca:mlca_dev@127.0.0.1:5432/mlca';
+/**
+ * 테스트는 **자기 데이터베이스**를 쓴다.
+ *
+ * `resetDatabase()` 가 매 테스트 사이에 `TRUNCATE` 한다. 대상이 개발 DB 였을 때 M6
+ * 작업 중 문제 30개가 두 번 날아갔고, 같은 일이 운영 호스트에서 일어나면 복구가 아니라
+ * 사고다. 이름이 `_test` 로 끝나지 않으면 **거부한다** — 건너뛰면 아무도 모르는 채로
+ * 통과하고, 그 침묵이 정확히 위험한 부분이다.
+ *
+ * DB 는 `tools/test-db-setup.js` 가 만든다 (`pnpm test` 가 먼저 부른다).
+ */
+const BASE_URL = process.env['DATABASE_URL'] ?? 'postgres://mlca:mlca_dev@127.0.0.1:5432/mlca';
+
+/** @param {string} url */
+function toTestUrl(url) {
+  const parsed = new URL(url);
+  const name = parsed.pathname.replace(/^\//, '');
+  parsed.pathname = `/${name.endsWith('_test') ? name : `${name}_test`}`;
+  return parsed.toString();
+}
+
+const DATABASE_URL = process.env['TEST_DATABASE_URL'] ?? toTestUrl(BASE_URL);
+
+if (!new URL(DATABASE_URL).pathname.endsWith('_test')) {
+  throw new Error(
+    `테스트 DB 이름이 _test 로 끝나지 않는다: ${DATABASE_URL}\n` +
+      '테스트는 매번 TRUNCATE 한다. 운영·개발 DB 를 대상으로 돌리지 않는다.',
+  );
+}
+
 const REDIS_URL = process.env['REDIS_URL'] ?? 'redis://127.0.0.1:6379';
 
 export const TEST_CONFIG = Object.freeze({

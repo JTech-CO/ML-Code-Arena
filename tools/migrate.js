@@ -92,7 +92,10 @@ async function run(client, migration, direction) {
 
 async function main() {
   const command = process.argv[2] ?? 'status';
-  const url = process.env['DATABASE_URL'];
+  // `--url` 로 대상을 바꿀 수 있다. 테스트 DB 준비(`tools/test-db-setup.js`)가 쓴다 —
+  // 그쪽이 `DATABASE_URL` 을 덮어쓰면 같은 프로세스의 다른 코드까지 영향을 받는다.
+  const urlFlagIndex = process.argv.indexOf('--url');
+  const url = urlFlagIndex === -1 ? process.env['DATABASE_URL'] : process.argv[urlFlagIndex + 1];
 
   if (!url) {
     console.error('DATABASE_URL 이 없다. .env 를 확인할 것 (docs/ENVIRONMENT.md §3).');
