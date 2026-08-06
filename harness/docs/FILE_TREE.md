@@ -20,12 +20,14 @@ ml-code-arena/
 │   ├── image/Dockerfile
 │   ├── runner/{runner,spec,ast_check,compare}.py
 │   └── fixtures/           판정 8종 재현 샘플
-├── problems/
+├── problems/               문제 정의가 원본, DB 는 파생물 (README.md 참조)
+│   ├── _concepts/<slug>.md 개념 문서. frontmatter 로 slug·title·tier
 │   └── <NNNN-slug>/
 │       ├── problem.json
 │       ├── statement.md
 │       ├── reference.py    정답 구현(비공개)
 │       ├── generator.py    케이스 생성
+│       ├── bypass.py       라이브러리 한 줄 풀이. FBD 를 받아야 한다
 │       └── cases/          .gitignore 대상(INV-2)
 ├── tools/
 │   ├── check-boundaries.js 경계 룰 실효 검증(INV-3) — M0

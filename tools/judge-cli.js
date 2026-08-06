@@ -18,8 +18,8 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-import { checkDaemon, docker, removeContainer } from '../apps/worker/src/sandbox/docker.js';
-import { buildMakeCasesArgs } from '../apps/worker/src/sandbox/options.js';
+import { checkDaemon } from '../apps/worker/src/sandbox/docker.js';
+import { makeCases } from '../apps/worker/src/sandbox/make-cases.js';
 import { resolveProblemDir } from '../apps/worker/src/sandbox/problem-dir.js';
 import { runInSandbox } from '../apps/worker/src/sandbox/run.js';
 import {
@@ -77,40 +77,6 @@ async function exists(target) {
     return true;
   } catch {
     return false;
-  }
-}
-
-/**
- * 케이스 생성 컨테이너를 돌린다 (INV-10).
- * @param {string} problemDir
- * @param {string|undefined} image
- */
-async function prepareCases(problemDir, image) {
-  const containerName = `mlca-mkcases-${randomUUID()}`;
-  try {
-    const created = await docker(
-      buildMakeCasesArgs({
-        containerName,
-        problemDir,
-        runnerDir: RUNNER_DIR,
-        ...(image === undefined ? {} : { image }),
-      }),
-      { timeoutMs: 120_000 },
-    );
-    if (created.code !== 0) {
-      throw new Error(`케이스 생성 컨테이너를 만들 수 없다: ${created.stderr.trim()}`);
-    }
-
-    const waited = await docker(['wait', containerName], { timeoutMs: 300_000 });
-    const logs = await docker(['logs', containerName], { timeoutMs: 60_000 });
-    const exitCode = Number.parseInt(waited.stdout.trim(), 10);
-
-    if (exitCode !== 0) {
-      throw new Error(`케이스 생성 실패 (exit=${exitCode})\n${logs.stderr.trim()}`);
-    }
-    return logs.stdout.trim();
-  } finally {
-    await removeContainer(containerName);
   }
 }
 
@@ -200,8 +166,12 @@ async function main() {
   const image = typeof flags['image'] === 'string' ? flags['image'] : undefined;
 
   if (flags['prepare']) {
-    const manifest = await prepareCases(problemDir, image);
-    console.log(manifest);
+    const manifest = await makeCases({
+      problemDir,
+      runnerDir: RUNNER_DIR,
+      ...(image === undefined ? {} : { image }),
+    });
+    console.log(JSON.stringify(manifest, null, 2));
     return;
   }
 

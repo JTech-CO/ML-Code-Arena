@@ -196,7 +196,12 @@ def main() -> None:
         return
 
     # --- 4. 정적 검사 (FBD) — 반드시 import 보다 먼저 (INV-6) ----------------
-    violations = ast_check.check_tree(tree, judge_spec.restrictions)
+    try:
+        violations = ast_check.check_tree(tree, judge_spec.restrictions)
+    except ValueError as exc:
+        # 제한 설정 자체가 잘못됐다. 사용자 책임이 아니므로 `FBD` 가 아니라 `IE` 다.
+        emit("IE", [], 0, error=f"restrictions: {exc}")
+        return
     if violations:
         emit("FBD", [], 0, detail={"violations": [v.to_dict() for v in violations]})
         return

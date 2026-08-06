@@ -202,7 +202,11 @@ export function buildPidsProbeArgs(target) {
  * `judge/tests` -> `judge/fixtures`, 컨테이너에서는 `/opt/mlca/tests` -> `/opt/mlca/fixtures`
  * 로 같은 상대 경로가 성립하도록 맞췄다.
  *
- * @param {{ containerName: string, runnerDir: string, testsDir: string, fixturesDir: string, image?: string }} target
+ * `problemsDir` 도 같은 이유로 `/opt/problems` 다. 테스트가 저장소 루트 기준으로
+ * `../../problems` 를 보므로, 컨테이너에서 `/opt/mlca/tests` 의 세 단계 위가 `/opt` 가
+ * 되도록 맞춘 것이다. 이 검사가 픽스처에만 걸리면 M6 의 문제 30개는 빠진다.
+ *
+ * @param {{ containerName: string, runnerDir: string, testsDir: string, fixturesDir: string, problemsDir?: string, image?: string }} target
  * @returns {string[]}
  */
 export function buildUnitTestArgs(target) {
@@ -223,6 +227,7 @@ export function buildUnitTestArgs(target) {
     `${toMountPath(target.testsDir)}:/opt/mlca/tests:ro`,
     '-v',
     `${toMountPath(target.fixturesDir)}:/opt/mlca/fixtures:ro`,
+    ...(target.problemsDir ? ['-v', `${toMountPath(target.problemsDir)}:/opt/problems:ro`] : []),
     '--user=65534:65534',
     '--workdir=/tmp',
     target.image ?? JUDGE_IMAGE_DEFAULT,

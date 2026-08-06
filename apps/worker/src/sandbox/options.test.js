@@ -172,12 +172,16 @@ test('단위 테스트 컨테이너의 마운트가 전부 읽기 전용이다',
     runnerDir: '/r',
     testsDir: '/t',
     fixturesDir: '/f',
+    problemsDir: '/p',
   });
   const mounts = args.filter((_, index) => args[index - 1] === '-v');
-  assert.equal(mounts.length, 3);
+  assert.equal(mounts.length, 4);
   for (const mount of mounts) {
     assert.ok(mount.endsWith(':ro'), `읽기 전용이 아니다: ${mount}`);
   }
+  // 테스트가 저장소 루트 기준 `../../problems` 를 보므로 마운트 위치가 정해져 있다.
+  // 호스트 경로는 플랫폼마다 정규화가 달라 접미사로만 확인한다.
+  assert.ok(mounts.some((mount) => mount.endsWith(':/opt/problems:ro')));
 });
 
 test('컨테이너 이름이 제출마다 달라질 수 있게 인자로 들어온다', () => {

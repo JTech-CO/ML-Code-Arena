@@ -51,6 +51,18 @@ _FORBIDDEN_DUNDER_ATTRS = frozenset(
 #: 두 번째 인자가 문자열 리터럴이 아니면 막는 호출. 동적 속성 접근은 검사를 우회한다.
 _DYNAMIC_ATTR_CALLS = frozenset({"getattr", "setattr", "delattr", "hasattr"})
 
+#: `forbidden_operators` 가 받는 토큰 -> AST 노드.
+#:
+#: 연산자를 막을 수 있어야 하는 이유는 행렬곱이다. `numpy.matmul`·`numpy.dot` 을 전부
+#: 막아도 `a @ b` 한 줄이 남으면 "행렬곱을 직접 구현하라"는 문제가 성립하지 않는다.
+#: 모듈·속성 이름만 막는 검사에는 이 경로가 보이지 않는다.
+_OPERATOR_NODES = {
+    "@": ast.MatMult,
+    "**": ast.Pow,
+    "//": ast.FloorDiv,
+    "%": ast.Mod,
+}
+
 
 @dataclass(frozen=True)
 class Violation:
@@ -76,6 +88,15 @@ class _Checker(ast.NodeVisitor):
         self.forbidden_imports = frozenset(restrictions.get("forbidden_imports") or ())
         self.forbidden_attributes = frozenset(restrictions.get("forbidden_attributes") or ())
         self.forbidden_builtins = frozenset(restrictions.get("forbidden_builtins") or ())
+
+        #: AST 노드 타입 -> 표기. 알 수 없는 토큰은 조용히 버리지 않고 그대로 둔다 —
+        #: 오타난 제한이 통과하면 그 문제는 막을 생각이던 것을 막지 못한다.
+        self.forbidden_operators: dict[type, str] = {}
+        for token in restrictions.get("forbidden_operators") or ():
+            node_type = _OPERATOR_NODES.get(token)
+            if node_type is None:
+                raise ValueError(f"알 수 없는 연산자 제한: {token!r}")
+            self.forbidden_operators[node_type] = token
 
         #: 지역 이름 -> 정규화된 모듈/속성 경로. `import numpy as np` 면 np -> numpy.
         self.aliases: dict[str, str] = {}
@@ -132,11 +153,28 @@ class _Checker(ast.NodeVisitor):
         parts.reverse()
         return ".".join([base, *parts]) if parts else base
 
-    def _check_path(self, path: str | None, node: ast.AST) -> None:
+    def _check_path(self, path: str | None, node: ast.AST) -> bool:
         if path and path in self.forbidden_attributes:
             self._add(
                 "forbidden_attribute",
                 f"이 문제는 `{path}` 사용이 금지되어 있습니다. 직접 구현해야 합니다.",
+                node,
+            )
+            return True
+        return False
+
+    def _check_bare_attr(self, attr: str, node: ast.AST) -> None:
+        """`.dot` 처럼 점으로 시작하는 항목은 **이름만** 보고 막는다.
+
+        `numpy.dot(a, b)` 를 막아도 `a.dot(b)` 가 남으면 "직접 구현하라"는 문제가
+        성립하지 않는다. 그런데 `a` 는 사용자가 정한 변수 이름이라 경로로는 잡히지
+        않는다. numpy 배열은 거의 모든 함수를 메서드로도 제공하므로, 경로 형태만
+        막는 제한은 절반만 막는 제한이다.
+        """
+        if f".{attr}" in self.forbidden_attributes:
+            self._add(
+                "forbidden_attribute",
+                f"이 문제는 `.{attr}` 사용이 금지되어 있습니다. 직접 구현해야 합니다.",
                 node,
             )
 
@@ -210,6 +248,28 @@ class _Checker(ast.NodeVisitor):
 
         self.generic_visit(node)
 
+    # ------------------------------------------------------------------ 연산자
+
+    def visit_BinOp(self, node: ast.BinOp) -> None:
+        token = self.forbidden_operators.get(type(node.op))
+        if token is not None:
+            self._add(
+                "forbidden_operator",
+                f"이 문제는 `{token}` 연산자 사용이 금지되어 있습니다. 직접 구현해야 합니다.",
+                node,
+            )
+        self.generic_visit(node)
+
+    def visit_AugAssign(self, node: ast.AugAssign) -> None:
+        token = self.forbidden_operators.get(type(node.op))
+        if token is not None:
+            self._add(
+                "forbidden_operator",
+                f"이 문제는 `{token}=` 연산자 사용이 금지되어 있습니다. 직접 구현해야 합니다.",
+                node,
+            )
+        self.generic_visit(node)
+
     def visit_Attribute(self, node: ast.Attribute) -> None:
         if node.attr in _FORBIDDEN_DUNDER_ATTRS:
             self._add(
@@ -218,7 +278,12 @@ class _Checker(ast.NodeVisitor):
                 node,
             )
 
-        self._check_path(self._resolve(node), node)
+        # 경로가 이미 걸렸으면 이름 규칙은 보지 않는다. 문제 정의가 `numpy.dot` 과
+        # `.dot` 을 함께 걸어 두는 것은 정상인데(전자는 `from numpy import dot` 을,
+        # 후자는 `a.dot(b)` 를 막는다), 둘 다 보고하면 같은 줄에 거의 같은 문장이
+        # 두 번 뜬다.
+        if not self._check_path(self._resolve(node), node):
+            self._check_bare_attr(node.attr, node)
         self.generic_visit(node)
 
 

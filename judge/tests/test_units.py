@@ -88,6 +88,58 @@ class AstCheckTest(unittest.TestCase):
             with self.subTest(source=source.splitlines()[0]):
                 self.assertNotEqual(rules(source, loose), set())
 
+    def test_금지_연산자를_잡는다(self):
+        # `numpy.matmul` 을 막아도 `a @ b` 가 남으면 행렬곱 문제가 성립하지 않는다.
+        restrictions = {**STRICT, "forbidden_operators": ["@"]}
+        self.assertIn(
+            "forbidden_operator",
+            rules("def solve(a, b):\n    return a @ b\n", restrictions),
+        )
+        self.assertIn(
+            "forbidden_operator",
+            rules("def solve(a, b):\n    a @= b\n    return a\n", restrictions),
+        )
+        # 제한하지 않은 연산자는 그대로 둔다.
+        self.assertNotIn(
+            "forbidden_operator",
+            rules("def solve(a, b):\n    return a * b\n", restrictions),
+        )
+
+    def test_알_수_없는_연산자_제한은_거부된다(self):
+        # 조용히 무시하면 오타난 제한이 아무 것도 막지 못한 채 통과한다.
+        with self.assertRaises(ValueError):
+            ast_check.check("def solve(x): return x\n", {"forbidden_operators": ["<<"]})
+
+    def test_메서드_형태의_금지_속성을_잡는다(self):
+        # `.dot` 는 이름만 보고 막는다. `a` 는 사용자가 정한 이름이라 경로로는 안 잡힌다.
+        restrictions = {**STRICT, "forbidden_attributes": ["numpy.dot", ".dot"]}
+        self.assertIn(
+            "forbidden_attribute",
+            rules("def solve(a, b):\n    return a.dot(b)\n", restrictions),
+        )
+        self.assertIn(
+            "forbidden_attribute",
+            rules("import numpy as np\ndef solve(a, b):\n    return np.dot(a, b)\n", restrictions),
+        )
+        # 점이 붙지 않은 항목은 전체 경로로만 맞춘다.
+        self.assertNotIn(
+            "forbidden_attribute",
+            rules(
+                "def solve(a, b):\n    return a.dot(b)\n",
+                {**STRICT, "forbidden_attributes": ["numpy.dot"]},
+            ),
+        )
+
+    def test_경로와_이름_규칙이_같은_줄을_두_번_보고하지_않는다(self):
+        # `numpy.dot` 과 `.dot` 을 함께 거는 것은 정상이다 — 막는 경로가 다르다.
+        # 그렇다고 `np.dot(a, b)` 한 줄에 거의 같은 문장이 두 번 뜨면 안 된다.
+        restrictions = {**STRICT, "forbidden_attributes": ["numpy.dot", ".dot"]}
+        violations = ast_check.check(
+            "import numpy as np\ndef solve(a, b):\n    return np.dot(a, b)\n", restrictions
+        )
+        self.assertEqual(len(violations), 1, [v.message for v in violations])
+        self.assertIn("numpy.dot", violations[0].message)
+
     def test_동적_속성_접근을_잡는다(self):
         source = "def solve(x):\n    return getattr(x, 'a' + 'b')\n"
         self.assertIn("dynamic_attribute", rules(source))
@@ -334,6 +386,7 @@ class CompareTest(unittest.TestCase):
 #: /opt/mlca/tests -> /opt/mlca/fixtures. 같은 상대 경로가 성립하도록 마운트를 맞췄다.
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 RUNNER_DIR = Path(__file__).resolve().parent.parent / "runner"
+PROBLEMS_DIR = Path(__file__).resolve().parent.parent.parent / "problems"
 
 #: 안전하지 않은 직렬화를 **활성화**하는 패턴 (INV-7, M1 DoD 6).
 #:
@@ -380,14 +433,24 @@ class ProblemDefinitionTest(unittest.TestCase):
     그 오류는 사용자가 신고하기 전까지 발견되지 않는다. 기준 구현을 자기 문제의
     제한으로 검사해 두면 출제 시점에 걸린다.
 
-    M6 에서 문제 30개를 올릴 때 `problem-sync --verify` 가 같은 검사를 해야 한다.
+    M1 픽스처와 M6 의 실제 문제집을 **같은 검사**로 본다. 케이스 생성(`make_cases.py`)도
+    같은 검사를 하지만 그쪽은 Docker 가 필요하다. 여기 있으면 `pnpm test` 만으로 잡힌다.
     """
 
     def problem_dirs(self):
-        root = FIXTURES_DIR / "problems"
-        if not root.is_dir():
-            self.skipTest(f"픽스처 문제 디렉터리가 없다: {root}")
-        return sorted(p for p in root.iterdir() if (p / "problem.json").is_file())
+        roots = [FIXTURES_DIR / "problems", PROBLEMS_DIR]
+        found = []
+        for root in roots:
+            if not root.is_dir():
+                continue
+            found.extend(
+                p
+                for p in root.iterdir()
+                if not p.name.startswith("_") and (p / "problem.json").is_file()
+            )
+        if not found:
+            self.skipTest(f"문제 디렉터리가 없다: {roots}")
+        return sorted(found)
 
     def test_기준_구현이_자기_문제의_제한을_통과한다(self):
         import json
