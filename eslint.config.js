@@ -144,7 +144,7 @@ export default [
   },
 
   {
-    files: ['apps/api/src/**/*.js'],
+    files: ['apps/api/src/**/*.js', 'apps/api/test/**/*.js'],
     languageOptions: { globals: globals.node },
     rules: {
       'no-restricted-imports': restrictPackages(

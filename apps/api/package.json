@@ -8,10 +8,20 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
+    "test": "node --test --test-concurrency=1 \"test/*.test.js\"",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/cors": "^11.3.0",
     "@mlca/shared": "workspace:*",
-    "fastify": "^5.11.2"
+    "@node-rs/argon2": "^2.0.2",
+    "bullmq": "^6.0.8",
+    "fastify": "^5.11.2",
+    "ioredis": "^6.0.0",
+    "pg": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.6"
   }
 }

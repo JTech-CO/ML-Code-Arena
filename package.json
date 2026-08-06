@@ -22,6 +22,7 @@
     "db:status": "node --env-file-if-exists=.env tools/migrate.js status",
     "db:reset": "node --env-file-if-exists=.env tools/migrate.js reset",
     "bench:submit": "node --env-file-if-exists=.env tools/bench-submit.js",
+    "e2e:api": "node --env-file-if-exists=.env tools/e2e-api.js",
     "judge": "node tools/judge-cli.js",
     "judge:image": "docker build -t mlca-python:3.11 judge/image",
     "judge:fixtures": "node tools/judge-fixtures.js",
