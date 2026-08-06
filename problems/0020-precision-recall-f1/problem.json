@@ -1,0 +1,20 @@
+{
+  "slug": "precision-recall-f1",
+  "title": "정밀도·재현율·F1",
+  "tier": 4,
+  "difficulty": 2,
+  "judge_mode": "tolerance",
+  "allowed_languages": ["python"],
+  "entrypoint": "solve",
+  "time_limit_ms": 10000,
+  "memory_limit_mb": 512,
+  "compare_options": { "rtol": 1e-5, "atol": 1e-8, "equal_nan": false },
+  "restrictions": {
+    "allowed_imports": ["numpy", "math"],
+    "forbidden_attributes": ["numpy.bincount", ".bincount"],
+    "forbidden_builtins": ["eval", "exec", "compile", "__import__", "open", "input"],
+    "required_entrypoint": "solve"
+  },
+  "tags": ["metrics", "classification"],
+  "concepts": [{ "slug": "classification-metrics", "relation": "practice" }]
+}

@@ -1,0 +1,26 @@
+{
+  "slug": "confusion-matrix",
+  "title": "혼동행렬",
+  "tier": 4,
+  "difficulty": 1,
+  "judge_mode": "tolerance",
+  "allowed_languages": ["python"],
+  "entrypoint": "solve",
+  "time_limit_ms": 10000,
+  "memory_limit_mb": 512,
+  "compare_options": { "rtol": 1e-5, "atol": 1e-8, "equal_nan": false },
+  "restrictions": {
+    "allowed_imports": ["numpy", "math"],
+    "forbidden_attributes": [
+      "numpy.bincount",
+      ".bincount",
+      "numpy.histogram2d",
+      "numpy.add.at",
+      "numpy.unique"
+    ],
+    "forbidden_builtins": ["eval", "exec", "compile", "__import__", "open", "input"],
+    "required_entrypoint": "solve"
+  },
+  "tags": ["metrics", "classification"],
+  "concepts": [{ "slug": "classification-metrics", "relation": "prerequisite" }]
+}
