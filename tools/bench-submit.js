@@ -40,14 +40,22 @@ function parseArgs(argv) {
 
 /**
  * 벤치용 사용자. `solved` 기록 경로까지 태우려면 로그인 사용자가 있어야 한다.
+ *
+ * 해시는 **진짜 argon2id** 다. 자리표시자를 넣으면 "DB 에 약한 해시가 없다"는 명제가
+ * 이 도구 하나 때문에 깨진다(M3 DoD 9). 스키마의 CHECK 제약도 거부한다.
+ * 이 계정으로 로그인하는 경로는 없으므로 원문 비밀번호는 의미가 없다.
  * @returns {Promise<string>}
  */
+const BENCH_PASSWORD_HASH =
+  '$argon2id$v=19$m=65536,t=3,p=4$ZlOgs3o70id7E3jd9q8W7Q$3/upbSK7mdVpz85MMUwCWepqUdQNM56tUl1IQdvB0zw';
+
 async function ensureUser() {
   const result = await getPool().query(
     `INSERT INTO users (email, password_hash, handle)
-     VALUES ('bench@local', 'not-a-real-hash', 'bench')
+     VALUES ('bench@local', $1, 'bench')
      ON CONFLICT (email) DO UPDATE SET last_seen_at = now()
      RETURNING id`,
+    [BENCH_PASSWORD_HASH],
   );
   return result.rows[0].id;
 }
