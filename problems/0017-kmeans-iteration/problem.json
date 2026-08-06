@@ -1,0 +1,20 @@
+{
+  "slug": "kmeans-iteration",
+  "title": "k-평균 1회 반복",
+  "tier": 2,
+  "difficulty": 3,
+  "judge_mode": "tolerance",
+  "allowed_languages": ["python"],
+  "entrypoint": "solve",
+  "time_limit_ms": 10000,
+  "memory_limit_mb": 512,
+  "compare_options": { "rtol": 1e-5, "atol": 1e-8, "equal_nan": false },
+  "restrictions": {
+    "allowed_imports": ["numpy", "math"],
+    "forbidden_attributes": ["numpy.linalg.norm", "numpy.linalg"],
+    "forbidden_builtins": ["eval", "exec", "compile", "__import__", "open", "input"],
+    "required_entrypoint": "solve"
+  },
+  "tags": ["clustering", "distance"],
+  "concepts": [{ "slug": "clustering", "relation": "prerequisite" }]
+}

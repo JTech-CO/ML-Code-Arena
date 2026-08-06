@@ -1,0 +1,30 @@
+{
+  "slug": "normal-equation",
+  "title": "정규방정식 선형회귀",
+  "tier": 2,
+  "difficulty": 3,
+  "judge_mode": "tolerance",
+  "allowed_languages": ["python"],
+  "entrypoint": "solve",
+  "time_limit_ms": 10000,
+  "memory_limit_mb": 512,
+  "compare_options": { "rtol": 1e-5, "atol": 1e-8, "equal_nan": false },
+  "restrictions": {
+    "allowed_imports": ["numpy", "math"],
+    "forbidden_attributes": [
+      "numpy.linalg",
+      "numpy.linalg.lstsq",
+      "numpy.linalg.inv",
+      "numpy.linalg.pinv",
+      "numpy.linalg.solve",
+      "numpy.polyfit"
+    ],
+    "forbidden_builtins": ["eval", "exec", "compile", "__import__", "open", "input"],
+    "required_entrypoint": "solve"
+  },
+  "tags": ["regression", "linear-algebra"],
+  "concepts": [
+    { "slug": "least-squares", "relation": "prerequisite" },
+    { "slug": "linear-system", "relation": "prerequisite" }
+  ]
+}

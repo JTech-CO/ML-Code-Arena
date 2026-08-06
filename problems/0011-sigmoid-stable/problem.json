@@ -1,0 +1,23 @@
+{
+  "slug": "sigmoid-stable",
+  "title": "수치 안정 시그모이드",
+  "tier": 2,
+  "difficulty": 1,
+  "judge_mode": "tolerance",
+  "allowed_languages": ["python"],
+  "entrypoint": "solve",
+  "time_limit_ms": 10000,
+  "memory_limit_mb": 512,
+  "compare_options": { "rtol": 1e-5, "atol": 1e-8, "equal_nan": false },
+  "restrictions": {
+    "allowed_imports": ["numpy", "math"],
+    "forbidden_attributes": ["numpy.tanh", ".tanh", "numpy.logaddexp"],
+    "forbidden_builtins": ["eval", "exec", "compile", "__import__", "open", "input"],
+    "required_entrypoint": "solve"
+  },
+  "tags": ["classification", "deep-learning"],
+  "concepts": [
+    { "slug": "sigmoid-and-logistic", "relation": "prerequisite" },
+    { "slug": "numerical-stability", "relation": "prerequisite" }
+  ]
+}

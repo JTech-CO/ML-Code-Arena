@@ -1,0 +1,23 @@
+{
+  "slug": "logistic-gradient-step",
+  "title": "로지스틱 회귀 경사 1스텝",
+  "tier": 2,
+  "difficulty": 3,
+  "judge_mode": "tolerance",
+  "allowed_languages": ["python"],
+  "entrypoint": "solve",
+  "time_limit_ms": 10000,
+  "memory_limit_mb": 512,
+  "compare_options": { "rtol": 1e-5, "atol": 1e-8, "equal_nan": false },
+  "restrictions": {
+    "allowed_imports": ["numpy", "math"],
+    "forbidden_attributes": ["numpy.tanh", ".tanh"],
+    "forbidden_builtins": ["eval", "exec", "compile", "__import__", "open", "input"],
+    "required_entrypoint": "solve"
+  },
+  "tags": ["classification", "optimization"],
+  "concepts": [
+    { "slug": "sigmoid-and-logistic", "relation": "practice" },
+    { "slug": "gradient-descent", "relation": "prerequisite" }
+  ]
+}
