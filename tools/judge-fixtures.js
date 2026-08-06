@@ -12,20 +12,25 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { access, readdir } from 'node:fs/promises';
+import { access, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-import { EXECUTION_LIMITS } from '@mlca/shared';
+import { EXECUTION_LIMITS, JUDGE_IMAGE_DEFAULT } from '@mlca/shared';
 
 import { checkDaemon, docker, removeContainer } from '../apps/worker/src/sandbox/docker.js';
 import {
+  CONTAINER_NAME_PREFIX,
   buildExpectDumpArgs,
   buildIsolationProbeArgs,
   buildPidsProbeArgs,
   buildUnitTestArgs,
 } from '../apps/worker/src/sandbox/options.js';
+import { runInSandbox } from '../apps/worker/src/sandbox/run.js';
+import { buildSpec, cleanWorkDir, countCases, prepareWorkDir } from '../apps/worker/src/sandbox/workdir.js';
+
+const DEFAULT_IMAGE = process.env['JUDGE_IMAGE'] ?? JUDGE_IMAGE_DEFAULT;
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const RUNNER_DIR = path.join(ROOT, 'judge', 'runner');
@@ -340,6 +345,49 @@ async function checkPidsLimit() {
   );
 }
 
+/**
+ * 크래시 복구 — 같은 이름의 고아 컨테이너가 남아 있어도 재채점이 성공해야 한다.
+ *
+ * 컨테이너 이름은 제출 ID 에서 나오고 재시도는 같은 제출 ID 를 쓴다. 워커가
+ * `docker run` 직후 죽으면 정리 코드가 돌지 못해 컨테이너가 남는다. 그 상태로
+ * 재시도하면 이름 충돌(exit 125)로 생성이 실패하고 **그 제출은 영구히 `IE`** 가 된다.
+ * 크래시 복구가 오히려 제출을 망가뜨리는 경로라 게이트로 고정한다.
+ */
+async function checkOrphanContainerRecovery() {
+  const submissionId = randomUUID();
+  const containerName = `${CONTAINER_NAME_PREFIX}${submissionId}`;
+
+  // 고아를 일부러 만든다.
+  await docker(
+    ['run', '--detach', '--name', containerName, '--network=none', DEFAULT_IMAGE, 'sleep', '120'],
+    { timeoutMs: 60_000 },
+  );
+
+  const problemDir = path.join(FIXTURES, 'problems', 'l2norm');
+  const casesDir = path.join(problemDir, 'cases');
+  const problem = JSON.parse(await readFile(path.join(problemDir, 'problem.json'), 'utf8'));
+
+  const judgeDir = await prepareWorkDir({
+    root: path.join(ROOT, '.judge-work'),
+    submissionId,
+    source: await readFile(path.join(SUBMISSIONS, 'ac.py'), 'utf8'),
+    spec: buildSpec(problem, await countCases(casesDir)),
+    casesDir,
+  });
+
+  try {
+    const result = await runInSandbox({ judgeDir, runnerDir: RUNNER_DIR, submissionId });
+    record(
+      '고아 컨테이너가 남아 있어도 재채점이 성공한다',
+      result.verdict === 'AC',
+      `${result.verdict}${result.error ? ` — ${result.error}` : ''} (IE 면 이름 충돌을 못 치운 것)`,
+    );
+  } finally {
+    await cleanWorkDir(judgeDir);
+    await removeContainer(containerName);
+  }
+}
+
 /** DoD 7 — 기대값이 사용자에게 도달하지 않는다 (INV-5). */
 async function checkExpectNotLeaked() {
   const casesDir = path.join(FIXTURES, 'problems', 'l2norm', 'cases');
@@ -415,6 +463,7 @@ async function main() {
   await checkIsolationProbe();
   await checkPidsLimit();
   console.log('');
+  await checkOrphanContainerRecovery();
   await checkExpectNotLeaked();
 
   const failed = results.filter((item) => !item.ok);

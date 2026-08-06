@@ -17,11 +17,14 @@
 
 ~~~
 pnpm install
-docker compose up -d postgres redis
-pnpm db:migrate
-docker build -t mlca-python:3.11 judge/image
-node tools/problem-sync.js --all
+cp .env.example .env         # 값을 채운다. 커밋 금지 (INV-1)
+pnpm db:up                   # docker compose up -d (Postgres 16 · Redis 7)
+pnpm db:migrate              # 평문 SQL 마이그레이션 (ADR-0008)
+pnpm judge:image             # docker build -t mlca-python:3.11 judge/image
+node tools/judge-cli.js --prepare --problem <slug>   # 케이스 생성 (INV-10)
 ~~~
+
+`docker-compose.yml` 의 계정·비밀번호는 개발 전용이다. 배포 값은 M7 에서 정한다.
 
 ## 3. 환경변수 (`.env` — 값은 비움, 커밋 금지 INV-1)
 

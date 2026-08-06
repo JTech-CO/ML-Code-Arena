@@ -3,14 +3,14 @@
 > 이 팩에서 **매 세션 바뀌는 유일한 파일**. 세션이 끊겨도 이 파일만 읽으면 이어서 작업 가능해야 한다.
 
 ## 현재 상태
-- **현재 phase**: M1 — 채점 러너 + 격리 컨테이너 ★
-- **상태**: **M1 완료 — DoD 9/9 통과.** 컨테이너 게이트 24/24, M0 게이트 5/5.
-- **마지막 갱신**: 2026-08-06, M0+M1 구현 세션
+- **현재 phase**: M2 완료 → **M3(데이터 모델 + API + 인증) 진입 가능**
+- **상태**: **M0·M1·M2 전부 DoD 통과.** M1 컨테이너 게이트 25/25, M2 DoD 7/7, M0 게이트 5/5.
+- **마지막 갱신**: 2026-08-06, M0+M1+M2 구현 세션
 - **저장소 경로**: `C:\Users\MSI\Desktop\ml-code-arena` — **비ASCII 경로로 되돌리지 말 것**
   (pnpm 네이티브 링커가 죽는다. 아래 막힘 기록)
 
-**한 줄 요약**: 채점기가 CLI 만으로 완결된다. 판정 8종이 전부 재현되고 격리 불변식
-4건(INV-4·INV-5·INV-6·INV-8)이 커널 상태로 확인됐다. M2 진입 가능.
+**한 줄 요약**: 제출이 큐를 타고 격리 컨테이너에서 채점되어 DB 에 기록되기까지가 완성됐다.
+HTTP 계층만 없다. 워커를 채점 도중 죽여도 회수되고 중복 결과가 생기지 않는다.
 
 ## 직전에 끝낸 것
 - 기술/디자인 백서 Phase 1 v0.1.0, 작업 하네스 팩 인스턴스화 (이전 세션)
@@ -30,18 +30,20 @@
   - `harness/docs/FILE_TREE.md` v0.2.0 — 경계 강제 수단 2종 명시, 신규 파일 반영
 
 ## 다음 할 일
-1. **M2(큐 + 워커) 진입.** `phases/M2_queue_worker.md`.
-   `apps/worker/src/sandbox/` 는 M1 에서 완성돼 있다. `runInSandbox()` 를 그대로 쓰고
-   큐 소비(`src/consumer/`)와 결과 기록(`src/result/`)만 붙이면 된다.
-2. M2 진입 전 준비: Redis 7 · Postgres 16 기동, Docker rootless 운용 여부 결정
-   (ADR-0007 후보 — 워커에 Docker 소켓을 주는 것은 사실상 호스트 루트 권한이다).
-3. M2 작업 시 주의:
-   - 큐 이름은 `packages/shared` 의 `QUEUE_NAMES` 단일 출처. 불일치는 "제출이 PENDING
-     에서 멈춤"으로 나타난다 (RUNBOOK 20번).
-   - `IE` 는 자동 재시도 대상이고 통계에서 제외된다. `VERDICT_META.IE.autoRetry` 로
-     이미 표현돼 있으니 워커가 그 플래그를 읽게 한다.
-   - 컨테이너 정리는 `runInSandbox` 의 `finally` 가 이미 보장한다. 워커에서 중복
-     구현하지 말 것 (INV-8).
+1. **M3(데이터 모델 + API + 인증/익명 세션) 진입.** `phases/M3_data_api_auth.md`.
+2. M3 작업 시 주의:
+   - **스키마 절반은 이미 있다.** `migrations/0001` 이 users·anon_sessions·problems·
+     submissions·solved 를, `0002` 가 집계 뷰와 `judging_at` 을 만든다. M3 는 concepts·
+     tags·testcases 를 `0003` 으로 추가하면 된다. 마이그레이션 도구 결정은 ADR-0008 로 끝났다.
+   - **제출 접수 로직을 워커에서 가져오지 말 것.** `apps/api` 는 `apps/worker` 를 import 할
+     수 없다(INV-3). API 는 자기 큐 생산자와 DB 풀을 갖는다. 공유되는 것은
+     `QUEUE_NAMES`·`QUEUE_PREFIX`·`JOB_OPTIONS` 같은 계약뿐이며 `packages/shared` 에 있다.
+   - 큐 작업 페이로드는 **제출 ID 하나**다 (`JudgeJob`). 소스를 실으면 재시도가 옛 데이터로
+     돌고 Redis 가 제출 원문 사본을 들게 된다.
+   - `queuePosition()` 이 `apps/worker/src/result/submissions.js` 에 있다. API 가 202 응답의
+     `queue_position` 을 만들 때 같은 정의를 쓰되, 경계상 코드를 재구현해야 한다.
+3. 미해결: Docker rootless 운용 여부 (ADR-0007 후보). 워커에 Docker 소켓을 주는 것은
+   사실상 호스트 루트 권한이다. M7 배포 설계 전에는 정해야 한다.
 
 ## M1 확정 게이트 (재실행 명령)
 ~~~bash
@@ -66,6 +68,14 @@ pnpm judge:fixtures     # 게이트 24건 — 판정 8종 + 격리 불변식 + �
   조회 대상을 없앤다. 대신 `finally` 에서 반드시 지운다 (INV-8).
 
 ## 결정된 것 (이번 세션)
+- **ADR-0008 — 마이그레이션을 평문 SQL + 최소 러너로.** 백서 §6.1 이 이미 완성된 DDL 이라
+  라이브러리 DSL 로 옮기면 백서와 코드가 서로 다른 언어로 같은 것을 두 번 말하게 된다.
+  M3 의 DoR 이 잡아둔 결정을 M2 가 필요로 해서 앞당겼다.
+- **큐 이름은 접두사와 이름으로 나눈다.** BullMQ 가 이름의 `:` 를 금지한다(내부 키 구분자).
+  `QUEUE_PREFIX='judge'` + `QUEUE_NAMES.fast='fast'` → Redis 키 `judge:fast:*` 로
+  ADR-0001 이 적은 모양이 유지된다. 합쳐진 이름은 테스트가 확인한다.
+- **`msgpackr-extract` 빌드 스크립트 거부.** bullmq 의 선택적 네이티브 가속기이고
+  없으면 순수 JS 로 폴백한다. 필요 없는 네이티브 빌드는 필요 없는 공격면이다.
 - **DoD 6 게이트 문구 개정** — 존재가 아니라 **활성화**를 본다.
   `allow_pickle=False` 는 INV-7 위반이 아니라 집행 지점이다. 단순 문자열 검색은
   집행 코드를 위반으로 오인하고, 그걸 피하려고 명시적 방어를 지우면 보호가 기본값에
@@ -103,6 +113,13 @@ pnpm judge:fixtures     # 게이트 24건 — 판정 8종 + 격리 불변식 + �
 | M1 | DoD 8 자원 상한 | 위 | PASS · MLE·TLE 재현 | 2026-08-06 |
 | M1 | DoD 9 fork 차단 | 위 | PASS · 62/400 성공 (상한 64) | 2026-08-06 |
 | M1 | DoD 6 직렬화(INV-7) | `git grep -niE "allow_pickle=True\|import pickle\|\.pkl" judge/` | PASS · 0건. 위반 3종 심어 탐지 확인 후 제거 | 2026-08-06 |
+| M2 | DoD 1 수렴·유실 | `bench:submit --count 20` | PASS · 20/20 DONE, 유실 0 | 2026-08-06 |
+| M2 | DoD 2 동시성 | 위 (`docker ps` 외부 관측) | PASS · 동시 컨테이너 **최대 4** (표본 57) | 2026-08-06 |
+| M2 | DoD 3 크래시 복구 | 벤치 중 워커 SIGKILL → 재기동 | PASS · 고아 4건 회수, 12/12 AC, 중복 0 | 2026-08-06 |
+| M2 | DoD 4 IE 재시도 | `bench:submit --induce-ie` | PASS · 시도 3회 후 IE 확정, JUDGING 갇힘 0 | 2026-08-06 |
+| M2 | DoD 5 IE 집계 제외 | `problem_stats` · `user_ranking` 뷰 | PASS · judged=0 excluded=3, solved 미기록 | 2026-08-06 |
+| M2 | DoD 6 큐 지연 | `bench:submit --count 20 --paced` | PASS · **P95 8ms** (게이트 2000ms) | 2026-08-06 |
+| M2 | DoD 7 컨테이너(INV-8) | 위 | PASS · 20건 처리 후 잔존 **0** | 2026-08-06 |
 
 ## 막힘 기록 (STOP 발동 시)
 

@@ -34,12 +34,18 @@ ml-code-arena/
 │   ├── batch-judge.js      전 문제 일괄 채점
 │   ├── contrast-check.js   토큰 대비 검사(INV-12)
 │   └── design-lint.js      금지 패턴 점검
+├── migrations/             평문 SQL 마이그레이션 (ADR-0008). `NNNN_name.{up,down}.sql`
 ├── .github/workflows/      CI — 빌드·타입체크·린트·테스트·경계 검증
 └── harness/                이 팩
 ~~~
 
 루트 설정 파일: `pnpm-workspace.yaml`, `package.json`, `tsconfig.base.json`, `eslint.config.js`,
-`.gitignore`, `.npmrc`, `.nvmrc`, `.env.example`, `CLAUDE.md`(→ `harness/CLAUDE.md` 참조).
+`docker-compose.yml`(Postgres·Redis), `.gitignore`, `.npmrc`, `.nvmrc`, `.env.example`,
+`CLAUDE.md`(→ `harness/CLAUDE.md` 참조).
+
+**DB 접근은 앱마다 따로 둔다.** `apps/api` 와 `apps/worker` 는 서로를 import 하지 않으므로
+연결 풀과 질의를 공유하지 않는다(§3). 공유되는 것은 `packages/shared` 의 타입·상수뿐이다.
+워커의 DB 코드는 `src/result/` 에 있다.
 
 각 패키지는 `tsconfig.json`으로 `tsconfig.base.json`을 확장한다. 타입체크는 JSDoc + `checkJs`이며
 산출물을 만들지 않는다(`noEmit`).
