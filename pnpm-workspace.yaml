@@ -9,6 +9,12 @@ packages:
   - 'packages/*'
 
 # pnpm >=10 blocks dependency install scripts by default.
-# vite needs esbuild's; nothing else is allowed to run one.
+# Every entry here is a deliberate decision, not a way to silence a warning.
 allowBuilds:
+  # vite needs esbuild's install script.
   esbuild: true
+  # Optional native accelerator for msgpackr (bullmq job serialization).
+  # msgpackr falls back to pure JS without it, and Phase 1 throughput
+  # (~2800 judgements/hour) does not need it. Denied rather than allowed:
+  # a native build script we do not need is attack surface we do not need.
+  msgpackr-extract: false

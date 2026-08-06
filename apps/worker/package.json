@@ -12,6 +12,12 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@mlca/shared": "workspace:*"
+    "@mlca/shared": "workspace:*",
+    "bullmq": "^6.0.8",
+    "ioredis": "^6.0.0",
+    "pg": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.6"
   }
 }

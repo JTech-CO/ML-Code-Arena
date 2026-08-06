@@ -93,13 +93,31 @@ export const API_ERROR_CODES = Object.freeze([
 /** @typedef {'SOURCE_TOO_LARGE'|'ANON_LIMIT_REACHED'|'RATE_LIMITED'|'PROBLEM_NOT_FOUND'} ApiErrorCode */
 
 /**
- * 채점 큐 이름 (ADR-0001). API 와 워커가 같은 문자열을 써야 한다.
+ * 채점 큐 키 네임스페이스 (ADR-0001).
+ *
+ * BullMQ 는 큐 **이름**에 `:` 를 금지한다 — 내부 Redis 키 구분자이기 때문이다.
+ * 그래서 `judge:fast` 를 이름 하나로 쓰지 않고 접두사와 이름으로 나눈다.
+ * 실제 Redis 키는 `judge:fast:*` 가 되어 ADR-0001 이 적은 것과 같아진다.
+ */
+export const QUEUE_PREFIX = 'judge';
+
+/**
+ * 큐 이름. API 와 워커가 같은 문자열을 써야 한다.
  * 불일치는 "제출이 PENDING 에서 멈춤"으로 나타난다 (RUNBOOK 20번).
  */
 export const QUEUE_NAMES = Object.freeze({
-  fast: 'judge:fast',
-  slow: 'judge:slow',
+  fast: 'fast',
+  slow: 'slow',
 });
+
+/**
+ * 로그·표시용 전체 이름. Redis 키 네임스페이스와 같은 모양이다.
+ * @param {string} name
+ * @returns {string}
+ */
+export function queueLabel(name) {
+  return `${QUEUE_PREFIX}:${name}`;
+}
 
 /** 커리큘럼 단계 범위. Phase 1 은 이 중 1·2·4·5 만 출제한다 (docs/TECHNICAL.md §11). */
 export const TIER_RANGE = Object.freeze({ min: 1, max: 9 });

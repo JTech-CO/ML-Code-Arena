@@ -16,6 +16,12 @@
     "lint:fix": "eslint . --fix",
     "test": "pnpm -r run test",
     "check:boundaries": "node tools/check-boundaries.js",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "node --env-file-if-exists=.env tools/migrate.js up",
+    "db:status": "node --env-file-if-exists=.env tools/migrate.js status",
+    "db:reset": "node --env-file-if-exists=.env tools/migrate.js reset",
+    "bench:submit": "node --env-file-if-exists=.env tools/bench-submit.js",
     "judge": "node tools/judge-cli.js",
     "judge:image": "docker build -t mlca-python:3.11 judge/image",
     "judge:fixtures": "node tools/judge-fixtures.js",
@@ -28,10 +34,12 @@
     "@eslint/js": "^9.39.5",
     "@mlca/shared": "workspace:*",
     "@types/node": "^22.20.1",
+    "@types/pg": "^8.15.6",
     "eslint": "^9.39.5",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-react": "^7.37.5",
     "globals": "^17.9.0",
+    "pg": "^8.22.0",
     "typescript": "^5.9.3"
   }
 }

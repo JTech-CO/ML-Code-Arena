@@ -9,9 +9,11 @@ import {
   JUDGE_MODES,
   LANGUAGES,
   PHASE1_TIERS,
+  QUEUE_NAMES,
   SOURCE_MAX_BYTES,
   SUBMISSION_STATUSES,
   isSubmissionStatus,
+  queueLabel,
 } from './index.js';
 
 test('Phase 1 범위 상수가 백서 §2.1 과 일치한다', () => {
@@ -39,6 +41,16 @@ test('CPU 시간 상한이 벽시계보다 짧다 — sleep 회피 차단 전제
 
 test('비교 기본값이 백서 §4.1.1 과 일치한다', () => {
   assert.deepEqual({ ...COMPARE_DEFAULTS }, { rtol: 1e-5, atol: 1e-8, equalNan: false });
+});
+
+test('큐 키 네임스페이스가 ADR-0001 의 judge:fast · judge:slow 와 같다', () => {
+  // BullMQ 는 이름에 `:` 를 금지하므로 접두사와 이름으로 나눠 두었다.
+  // 합쳤을 때 ADR 이 적은 모양이 나오는지가 확인 대상이다.
+  assert.equal(queueLabel(QUEUE_NAMES.fast), 'judge:fast');
+  assert.equal(queueLabel(QUEUE_NAMES.slow), 'judge:slow');
+  for (const name of Object.values(QUEUE_NAMES)) {
+    assert.ok(!name.includes(':'), `큐 이름에 콜론이 있으면 BullMQ 가 거부한다: ${name}`);
+  }
 });
 
 test('제출 상태와 API 오류 코드가 백서 §6.1 · §7.2 와 일치한다', () => {

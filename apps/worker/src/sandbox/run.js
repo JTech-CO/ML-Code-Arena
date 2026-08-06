@@ -96,6 +96,14 @@ export async function runInSandbox(request) {
   let containerId = '';
 
   try {
+    // 같은 이름의 컨테이너가 남아 있으면 생성이 충돌해 실패한다.
+    //
+    // 이름은 제출 ID 에서 나오고 재시도는 같은 제출 ID 를 쓴다. 워커가 `docker run` 직후
+    // 죽으면 정리 코드가 돌지 못해 컨테이너가 남고, 그 상태로 재시도하면 이름 충돌로
+    // 생성이 실패해 **그 제출은 영구히 IE 가 된다.** 크래시 복구가 오히려 제출을
+    // 망가뜨리는 셈이라, 만들기 전에 먼저 치운다.
+    await removeContainer(containerName);
+
     const created = await docker(
       buildRunArgs({
         containerName,

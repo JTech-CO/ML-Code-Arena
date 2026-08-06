@@ -75,6 +75,8 @@ export default [
       '**/dist/**',
       '**/build/**',
       '**/coverage/**',
+      // 제출 원문과 임시 산출물이 머무는 곳. 소스가 아니다.
+      '.judge-work/**',
       // Python 및 문서·하네스는 JS 린트 대상이 아니다.
       'judge/**',
       'problems/**',

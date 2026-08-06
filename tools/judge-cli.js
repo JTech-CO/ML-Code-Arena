@@ -13,13 +13,14 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { access, readFile, readdir } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import { checkDaemon, docker, removeContainer } from '../apps/worker/src/sandbox/docker.js';
 import { buildMakeCasesArgs } from '../apps/worker/src/sandbox/options.js';
+import { resolveProblemDir } from '../apps/worker/src/sandbox/problem-dir.js';
 import { runInSandbox } from '../apps/worker/src/sandbox/run.js';
 import {
   buildSpec,
@@ -77,30 +78,6 @@ async function exists(target) {
   } catch {
     return false;
   }
-}
-
-/**
- * 문제 디렉터리를 찾는다. `problems/<NNNN-slug>` 규약과 픽스처를 모두 본다.
- * @param {string} slug
- * @returns {Promise<string>}
- */
-async function resolveProblemDir(slug) {
-  const fixture = path.join(ROOT, 'judge', 'fixtures', 'problems', slug);
-  if (await exists(path.join(fixture, 'problem.json'))) return fixture;
-
-  const problemsRoot = path.join(ROOT, 'problems');
-  if (await exists(problemsRoot)) {
-    const entries = await readdir(problemsRoot, { withFileTypes: true });
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      if (entry.name === slug || entry.name.replace(/^\d+-/, '') === slug) {
-        const candidate = path.join(problemsRoot, entry.name);
-        if (await exists(path.join(candidate, 'problem.json'))) return candidate;
-      }
-    }
-  }
-
-  throw new Error(`문제를 찾을 수 없다: ${slug}`);
 }
 
 /**

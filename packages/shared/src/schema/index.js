@@ -86,6 +86,17 @@ export const RUNNER_OUTPUT_SCHEMA_VERSION = 1;
  */
 
 /**
+ * 채점 큐에 실리는 작업 페이로드 (ADR-0001).
+ *
+ * **제출 ID 하나만 싣는다.** 소스·문제 정의를 함께 실으면 두 가지가 깨진다.
+ * 재시도 시 큐에 박제된 옛 데이터로 채점하게 되고, Redis 가 제출 원문의 사본을
+ * 들고 있게 된다. 워커는 항상 DB 에서 현재 상태를 읽는다.
+ *
+ * @typedef {object} JudgeJob
+ * @property {string} submission_id
+ */
+
+/**
  * 제출 요청 본문 (docs/TECHNICAL.md §7.2).
  * @typedef {object} SubmissionRequest
  * @property {string} problem_slug
