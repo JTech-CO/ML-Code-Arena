@@ -1,0 +1,20 @@
+{
+  "slug": "softmax-stable",
+  "title": "수치 안정 softmax",
+  "tier": 1,
+  "difficulty": 2,
+  "judge_mode": "tolerance",
+  "allowed_languages": ["python"],
+  "entrypoint": "solve",
+  "time_limit_ms": 10000,
+  "memory_limit_mb": 512,
+  "compare_options": { "rtol": 1e-5, "atol": 1e-8, "equal_nan": false },
+  "restrictions": {
+    "allowed_imports": ["numpy", "math"],
+    "forbidden_attributes": ["numpy.logaddexp", "numpy.logaddexp2"],
+    "forbidden_builtins": ["eval", "exec", "compile", "__import__", "open", "input"],
+    "required_entrypoint": "solve"
+  },
+  "tags": ["numpy", "deep-learning"],
+  "concepts": [{ "slug": "numerical-stability", "relation": "prerequisite" }]
+}
