@@ -28,6 +28,13 @@
 | 30 | 테마 전환 시 첫 화면이 깜빡임 | `<head>` FOUC 방지 인라인 스크립트 누락 | `docs/DESIGN.md` §8.2 스크립트를 CSS·번들보다 앞에 배치 |
 | 31 | 다크 모드에서 판정 색이 안 보임 | 라이트 토큰을 그대로 사용 | 다크 전용 판정 토큰 적용, 대비 검사 재실행(INV-12) |
 | 32 | 문제 목록이 느림 | 정답률을 매 요청마다 전체 제출로 집계 | `solved` 테이블·집계 캐시 사용, 인덱스 확인 |
+| 40 | Postgres 가 "superuser password is not specified" 로 기동 거부 | compose 의 `${...}` 보간이 **compose 파일 옆** `.env` 를 읽는다. 우리 `.env` 는 저장소 루트다 | `docker compose --env-file .env -f deploy/compose.yml ...` 로 부른다 (ENVIRONMENT §7.3). `env_file:` 은 컨테이너 환경변수용이라 보간을 대신하지 못한다 |
+| 41 | `/health` 가 200 인데 JSON 이 아니라 HTML | 프록시에 `/health` 경로가 없어 SPA 폴백이 `index.html` 을 돌려준다. **API 가 죽어도 헬스체크가 초록** | `Caddyfile` 에 `handle /health { reverse_proxy api:3000 }` 을 둔다. 모니터링은 본문까지 확인할 것 |
+| 42 | 이미지 빌드가 "vite 를 찾을 수 없다"로 실패 | `.dockerignore` 부재로 호스트 `node_modules`(pnpm 심볼릭 링크 농장)가 컨텍스트에 들어가 컨테이너 링크를 덮어씀 | `.dockerignore` 에 `node_modules` 추가. 같은 이유로 `.env` 도 반드시 제외한다(INV-1) — 없으면 시크릿이 이미지 레이어에 박힌다 |
+| 43 | 개발 DB 의 데이터가 테스트 후 사라짐 | API 테스트가 `DATABASE_URL` 대상에 `TRUNCATE` 를 건다 | `pnpm test` 는 `<db>_test` 를 쓴다. 이름이 `_test` 로 끝나지 않으면 거부한다. 운영 호스트에서 테스트를 돌리지 않는다 |
+| 44 | 새 배포가 브라우저에 반영되지 않음 | `index.html` 이 캐시됨. 경로 매처를 `/index.html` 로 적으면 요청 경로가 `/` 일 때 매치되지 않는다 | `@page not path /assets/*` 로 매처를 뒤집어 `no-cache` 를 건다. 해시 붙은 자산만 `immutable` |
+| 45 | 백업은 도는데 복구가 안 됨 | 덤프 생성만 확인하고 복원을 확인하지 않음 | `tools/db-backup.js --verify` 를 크론에 넣는다 — 빈 DB 에 실제 복원 후 행 수를 대조하고 그 DB 를 지운다 |
+| 46 | `IE` 경보가 떴는데 원인을 모름 | `IE` 상세가 저장되지 않음 | `submissions.ie_reason` 을 본다 (migration 0005). API 로는 나가지 않는 운영 전용 컬럼이다 |
 
 ## 행 추가 규칙
 같은 이슈를 2회 이상 겪으면 행으로 승격. 형식: 증상(관측 가능) / 가장 흔한 원인 순 / 최소 조치. 불변식 관련이면 INV-n 병기.

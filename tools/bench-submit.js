@@ -236,6 +236,7 @@ async function main() {
   const rows = await getPool().query(
     `SELECT id, status, verdict, attempts,
             extract(epoch FROM (judging_at - created_at)) * 1000 AS queue_ms,
+            extract(epoch FROM (judged_at - judging_at)) * 1000  AS service_ms,
             extract(epoch FROM (judged_at - created_at)) * 1000  AS total_ms
        FROM submissions WHERE id = ANY($1)`,
     [ids],
@@ -263,6 +264,15 @@ async function main() {
     [problemId],
   );
 
+  /** @param {string} column */
+  const series = (column) =>
+    rows.rows.map((row) => Number(row[column])).filter((value) => Number.isFinite(value));
+
+  const serviceTimes = series('service_ms');
+  const totalTimes = series('total_ms');
+  const ieCount = verdicts['IE'] ?? 0;
+  const ieRatio = rows.rows.length > 0 ? ieCount / rows.rows.length : 0;
+
   console.log('');
   console.log(`수렴        ${done}/${ids.length}  (${elapsed}ms)`);
   console.log(`판정 분포   ${JSON.stringify(verdicts)}`);
@@ -272,6 +282,23 @@ async function main() {
       percentile(queueDelays, 95),
     )}ms  max ${Math.round(Math.max(0, ...queueDelays))}ms`,
   );
+
+  // **채점 완료 시간을 두 가지로 낸다.** 백서 §12 의 "채점 완료 P95 < 5초" 는 처리량
+  // 계산(2,800건/시 = 4 × 3600 / 5)에 그대로 쓰이는 값이므로 **제출 1건의 서비스
+  // 시간**이다. 일괄 투입에서 종단 시간은 앞선 제출을 기다린 시간을 포함하며,
+  // 그것은 성능이 아니라 큐 깊이의 함수다 — 50건을 동시성 4로 처리하면 마지막 건은
+  // 반드시 12배쯤 걸린다. 둘 다 찍어 어느 쪽이 게이트인지 숨기지 않는다.
+  console.log(
+    `채점 소요   P50 ${Math.round(percentile(serviceTimes, 50))}ms  P95 ${Math.round(
+      percentile(serviceTimes, 95),
+    )}ms  max ${Math.round(Math.max(0, ...serviceTimes))}ms   ← §12 게이트 (<5000ms)`,
+  );
+  console.log(
+    `종단 시간   P50 ${Math.round(percentile(totalTimes, 50))}ms  P95 ${Math.round(
+      percentile(totalTimes, 95),
+    )}ms  max ${Math.round(Math.max(0, ...totalTimes))}ms   (큐 대기 포함)`,
+  );
+  console.log(`IE 비율     ${ieCount}/${rows.rows.length} = ${(ieRatio * 100).toFixed(2)}%  (임계 0.50%)`);
   console.log(`동시 컨테이너 최대 ${containers.max}  (표본 ${containers.samples}회)`);
   console.log(`잔존 컨테이너 ${leftoverCount}`);
   if (stats.rows[0]) {
@@ -286,10 +313,27 @@ async function main() {
   await connection.quit();
   await closePool();
 
-  const converged = done === ids.length;
-  if (!converged) {
-    console.error(`\n수렴 실패: ${ids.length - done}건이 DONE 에 도달하지 못했다`);
+  // M7 DoD 3 — 유실 0건 · 채점 완료 P95 < 5초 · IE 비율 0.5% 미만.
+  // 판정은 여기서 한다. 사람이 표를 읽고 판단하면 언젠가 넘긴 것을 통과로 읽는다.
+  /** @type {string[]} */
+  const failures = [];
+
+  if (done !== ids.length) failures.push(`유실 ${ids.length - done}건이 DONE 에 도달하지 못했다`);
+
+  const serviceP95 = percentile(serviceTimes, 95);
+  if (serviceP95 > 5000) failures.push(`채점 소요 P95 ${Math.round(serviceP95)}ms > 5000ms`);
+
+  if (ieRatio > 0.005) failures.push(`IE 비율 ${(ieRatio * 100).toFixed(2)}% > 0.50%`);
+
+  if (leftoverCount > 0) failures.push(`잔존 컨테이너 ${leftoverCount}건 (INV-8)`);
+
+  console.log('');
+  if (failures.length > 0) {
+    console.error('게이트 실패');
+    for (const line of failures) console.error(`  - ${line}`);
     process.exitCode = 1;
+  } else {
+    console.log('게이트 통과 — 유실 0 · 채점 P95 < 5s · IE < 0.5% · 잔존 컨테이너 0');
   }
 }
 
