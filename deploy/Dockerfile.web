@@ -1,0 +1,32 @@
+# 정적 web 을 빌드해 Caddy 이미지에 넣는다.
+#
+# web 은 빌드 산출물이 전부이므로 런타임에 Node 가 필요 없다. 프록시가 곧 웹 서버다 —
+# 컨테이너를 하나 줄이는 것보다, `/api` 와 정적 파일이 **같은 출처**라는 사실이
+# 한 파일(Caddyfile)에 보이는 것이 중요하다.
+
+FROM node:22-alpine AS build
+
+RUN corepack enable
+WORKDIR /src
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/shared/package.json packages/shared/
+COPY apps/web/package.json apps/web/
+
+RUN pnpm install --frozen-lockfile --filter @mlca/web...
+
+COPY packages/shared packages/shared
+COPY apps/web apps/web
+
+# API 주소를 빌드에 굽지 않는다. 클라이언트는 상대 경로 `/api/...` 를 쓰고
+# 같은 출처로 나간다 (apps/web/src/api/client.js).
+RUN pnpm --filter @mlca/web run build
+
+FROM caddy:2-alpine AS runtime
+
+COPY --from=build /src/apps/web/dist /srv
+COPY deploy/Caddyfile /etc/caddy/Caddyfile
+
+# 설정이 문법적으로 맞는지 이미지 빌드 시점에 확인한다. 런타임에 발견하면
+# 프록시가 안 뜨고, 그때는 이미 배포 중이다.
+RUN caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile

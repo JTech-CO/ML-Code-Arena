@@ -1,0 +1,85 @@
+# 채점 워커 — 호스트 프로세스 (ADR-0007).
+#
+#   sudo cp deploy/mlca-worker.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now mlca-worker
+#
+# 워커는 **사용자 코드를 실행하지 않는다.** 큐에서 제출 ID 를 꺼내 격리 컨테이너를 만들고,
+# 결과를 DB 에 쓰고, 컨테이너를 지운다. 이 전제가 깨지면 `docker` 그룹 소속이 곧
+# 임의 코드의 호스트 루트 권한이 된다 (apps/worker/src/index.js 머리말).
+#
+# 아래 강화 설정은 그 전제를 **두 번째 방어선**으로 받친다. 워커가 침해되더라도
+# 파일시스템·커널 인터페이스로 넓히지 못하게 한다. 다만 `docker` 그룹 자체는 여전히
+# 루트 등가이며, 그것을 없애려면 rootless 데몬으로 가야 한다 — deploy/README.md 참조.
+
+[Unit]
+Description=ML Code Arena judge worker
+Documentation=https://github.com/JTech-CO/ML-Code-Arena
+# 소켓이 없으면 컨테이너를 만들 수 없다. 의존을 명시해 기동 순서를 고정한다.
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=mlca
+# 소켓 접근에 필요한 유일한 이유로 붙인다.
+SupplementaryGroups=docker
+
+WorkingDirectory=/opt/mlca
+EnvironmentFile=/opt/mlca/.env
+
+# 이미지가 없으면 모든 제출이 `IE` 가 된다 (RUNBOOK 21번). 기동 시점에 끊어
+# "돌고는 있는데 전부 실패"를 만들지 않는다.
+ExecStartPre=/usr/bin/docker image inspect ${JUDGE_IMAGE}
+ExecStart=/usr/bin/node apps/worker/src/index.js
+
+Restart=always
+RestartSec=5s
+# SIGTERM 후 진행 중 채점을 마칠 여유. 벽시계 상한 10초 + 정리 시간.
+TimeoutStopSec=30s
+KillSignal=SIGTERM
+
+# --- 권한 축소 --------------------------------------------------------------
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+# --- 파일시스템 -------------------------------------------------------------
+# /usr·/boot·/efi 는 읽기 전용, 나머지 시스템 경로는 접근 불가.
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+
+# 쓸 수 있는 곳은 제출 작업 디렉터리 하나뿐이다. 러너·문제 정의는 읽기만 한다.
+ReadWritePaths=/var/lib/mlca
+
+# --- 시스템콜 ---------------------------------------------------------------
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources @obsolete
+SystemCallArchitectures=native
+
+# --- 자원 ------------------------------------------------------------------
+# 채점 컨테이너의 메모리는 여기 포함되지 않는다. 컨테이너는 별도 cgroup 이며
+# 상한은 워커가 `--memory` 로 건다 (apps/worker/src/sandbox/options.js).
+MemoryMax=1G
+TasksMax=256
+
+# --- 로그 ------------------------------------------------------------------
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mlca-worker
+
+[Install]
+WantedBy=multi-user.target

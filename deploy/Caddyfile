@@ -1,0 +1,78 @@
+# 리버스 프록시 — 정적 web + `/api` + SSE.
+#
+# **web 과 api 를 같은 출처에 둔다.** 세션·익명 세션 쿠키가 `SameSite=Lax` 이므로
+# (ADR-0004) 출처가 갈리면 쿠키가 실리지 않고 익명 한도와 계정 승계가 조용히 깨진다.
+# 개발에서 Vite 프록시로 맞춰 둔 것과 같은 형태다.
+
+{
+	# 관리 API 를 열지 않는다. 컨테이너 안에서만 쓸 것이 아니라 아예 필요가 없다.
+	admin off
+
+	# 인증서 만료 알림을 받으려면 여기 `email you@example.com` 을 **직접** 넣는다.
+	# 환경변수로 두지 않는 이유: Caddy 는 `email` 에 빈 값을 허용하지 않아
+	# `{$MLCA_TLS_EMAIL:}` 형태가 설정 파싱 자체를 실패시킨다. 기본값을 지어내면
+	# 도메인을 붙이는 순간 그 가짜 주소가 Let's Encrypt 로 나간다.
+}
+
+# 기본값은 `http://localhost` — TLS 를 시도하지 않는다. 운영에서는
+# `MLCA_SITE_ADDRESS=arena.example.com` 처럼 도메인만 주면 자동 HTTPS 가 붙는다.
+{$MLCA_SITE_ADDRESS:http://localhost} {
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy same-origin
+		-Server
+	}
+
+	# --- SSE ----------------------------------------------------------------
+	# 게이트 4번이 여기 달려 있다. 프록시가 버퍼링하면 판정 이벤트가 뭉쳐 나가거나
+	# 아예 멈춘다 (RUNBOOK 27번).
+	#
+	#   flush_interval -1   응답 바이트를 모으지 않고 즉시 흘린다
+	#   read_timeout 0      업스트림 읽기에 마감을 두지 않는다. SSE 는 오래 조용하다
+	#
+	# 압축(`encode`)을 이 블록에 걸지 않는 것도 같은 이유다. 압축기는 블록이 찰 때까지
+	# 출력을 쥐고 있으므로 하트비트 한 줄이 나가지 않는다.
+	handle /api/stream/* {
+		reverse_proxy api:3000 {
+			flush_interval -1
+			transport http {
+				read_timeout 0
+			}
+		}
+	}
+
+	# --- API ----------------------------------------------------------------
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+
+	# `/health` 는 `/api` 아래가 아니다 (apps/api/src/server.js). 여기서 따로 넘기지
+	# 않으면 아래 SPA 폴백이 index.html 을 200 으로 돌려주고, **API 가 죽어도
+	# 헬스체크가 초록**이 된다. 실제로 M7 에서 그 상태를 만들고 잡았다.
+	handle /health {
+		reverse_proxy api:3000
+	}
+
+	# --- 정적 web -----------------------------------------------------------
+	handle {
+		encode zstd gzip
+		root * /srv
+
+		# 파일명에 해시가 붙은 자산은 영구 캐시해도 안전하다. index.html 은 아니다 —
+		# 그것이 새 해시를 가리키는 유일한 경로라 캐시되면 배포가 반영되지 않는다.
+		#
+		# 두 매처가 서로 배타적이어야 한다. `header /index.html ...` 로 적으면
+		# 요청 경로가 `/` 일 때 매치되지 않는다 — `try_files` 의 내부 재작성은
+		# 헤더 매처가 보는 경로를 바꾸지 않기 때문이다. 그러면 첫 화면만 캐시 지시가
+		# 없는 상태로 나가고, 그 사실은 배포가 반영되지 않을 때 처음 드러난다.
+		@hashed path /assets/*
+		@page not path /assets/*
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+		header @page Cache-Control "no-cache"
+
+		# SPA 라우팅. `/problems/l2-normalize` 를 새로고침해도 index.html 이 나와야 한다.
+		try_files {path} /index.html
+		file_server
+	}
+}
