@@ -1,0 +1,43 @@
+# 개발용 의존 서비스 (docs/ENVIRONMENT.md §2).
+#
+# 채점 컨테이너는 여기 없다. 워커가 제출 1건당 직접 만들고 즉시 파기한다 (INV-8).
+# 이 파일은 Postgres·Redis 만 띄운다.
+
+name: mlca
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mlca
+      POSTGRES_PASSWORD: mlca_dev
+      POSTGRES_DB: mlca
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # pg_isready 만으로는 "기동 중" 상태를 통과시킬 수 있어 실제 질의로 확인한다.
+      test: ['CMD-SHELL', 'psql -U mlca -d mlca -c "select 1" || exit 1']
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    # BullMQ 는 키를 직접 관리한다. maxmemory 정책이 키를 evict 하면 작업이 조용히 사라지므로
+    # noeviction 을 명시한다 — 기본값이 바뀌어도 큐가 유실되지 않게 한다.
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory-policy', 'noeviction']
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  postgres-data:
+  redis-data:
