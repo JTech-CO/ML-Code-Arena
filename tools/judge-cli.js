@@ -18,8 +18,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-import { docker, removeContainer } from '../apps/worker/src/sandbox/docker.js';
-import { checkDaemon } from '../apps/worker/src/sandbox/docker.js';
+import { checkDaemon, docker, removeContainer } from '../apps/worker/src/sandbox/docker.js';
 import { buildMakeCasesArgs } from '../apps/worker/src/sandbox/options.js';
 import { runInSandbox } from '../apps/worker/src/sandbox/run.js';
 import {
@@ -236,6 +235,16 @@ async function main() {
     return;
   }
 
+  // 케이스가 0건이면 러너의 케이스 루프가 한 번도 돌지 않는다. 러너도 이를 `IE` 로
+  // 끊지만, 여기서 먼저 끊어야 사용자가 무엇을 해야 하는지 알 수 있다.
+  const caseCount = await countCases(casesDir);
+  if (caseCount === 0) {
+    console.error(`케이스가 0건이다: ${casesDir}`);
+    console.error(`다시 생성할 것:  node tools/judge-cli.js --prepare --problem ${slug}`);
+    process.exitCode = 2;
+    return;
+  }
+
   const source = await readFile(path.resolve(ROOT, flags['source']), 'utf8');
   const submissionId = randomUUID();
   const workRoot =
@@ -245,7 +254,7 @@ async function main() {
     root: workRoot,
     submissionId,
     source,
-    spec: buildSpec(problem, await countCases(casesDir)),
+    spec: buildSpec(problem, caseCount),
     casesDir,
   });
 

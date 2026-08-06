@@ -22,6 +22,7 @@ import numpy as np  # noqa: E402
 import ast_check  # noqa: E402
 import codec  # noqa: E402
 import compare as compare_mod  # noqa: E402
+import spec as spec_mod  # noqa: E402
 
 STRICT = {
     "allowed_imports": ["numpy", "math"],
@@ -200,6 +201,71 @@ class CodecTest(unittest.TestCase):
             json_path.write_text("{not json", encoding="utf-8")
             with self.assertRaises(codec.CodecError):
                 codec.load(json_path, npz_path)
+
+
+VALID_SPEC = {
+    "entrypoint": "solve",
+    "time_limit_ms": 10000,
+    "cpu_time_limit_ms": 8000,
+    "memory_limit_mb": 512,
+    "output_limit_bytes": 1048576,
+    "case_count": 3,
+    "compare_options": {"rtol": 1e-5},
+    "restrictions": {"allowed_imports": ["numpy"]},
+}
+
+
+class SpecTest(unittest.TestCase):
+    """spec 은 플랫폼이 만든 파일이다. 여기서 나는 오류는 전부 IE 로 이어진다."""
+
+    def load(self, payload):
+        import json
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "spec.json"
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            return spec_mod.load(path)
+
+    def test_정상_명세를_읽는다(self):
+        spec = self.load(VALID_SPEC)
+        self.assertEqual(spec.entrypoint, "solve")
+        self.assertEqual(spec.case_count, 3)
+
+    def test_케이스_0건은_거부한다(self):
+        """0 을 허용하면 케이스 루프가 안 돌고 모든 제출이 AC 가 된다."""
+        with self.assertRaises(spec_mod.SpecError):
+            self.load({**VALID_SPEC, "case_count": 0})
+
+    def test_엔트리포인트가_식별자가_아니면_거부한다(self):
+        for bad in ("", "not an identifier", "1solve", None, 42):
+            with self.subTest(entrypoint=bad):
+                with self.assertRaises(spec_mod.SpecError):
+                    self.load({**VALID_SPEC, "entrypoint": bad})
+
+    def test_bool_을_정수로_받지_않는다(self):
+        # 파이썬에서 True 는 int 의 하위 타입이다. 그냥 isinstance 로 보면 통과한다.
+        with self.assertRaises(spec_mod.SpecError):
+            self.load({**VALID_SPEC, "case_count": True})
+
+    def test_제한과_비교옵션이_객체가_아니면_거부한다(self):
+        with self.assertRaises(spec_mod.SpecError):
+            self.load({**VALID_SPEC, "restrictions": ["numpy"]})
+
+    def test_상한이_0_이하면_거부한다(self):
+        for key in ("time_limit_ms", "cpu_time_limit_ms", "memory_limit_mb", "output_limit_bytes"):
+            with self.subTest(key=key):
+                with self.assertRaises(spec_mod.SpecError):
+                    self.load({**VALID_SPEC, key: 0})
+
+    def test_없는_파일과_깨진_json_을_거부한다(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(spec_mod.SpecError):
+                spec_mod.load(Path(tmp) / "없음.json")
+
+            broken = Path(tmp) / "spec.json"
+            broken.write_text("{not json", encoding="utf-8")
+            with self.assertRaises(spec_mod.SpecError):
+                spec_mod.load(broken)
 
 
 DEFAULTS = {"rtol": 1e-5, "atol": 1e-8, "equal_nan": False}

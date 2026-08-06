@@ -60,7 +60,10 @@ def load(path: Path) -> Spec:
         cpu_time_limit_ms=_require_int(raw, "cpu_time_limit_ms"),
         memory_limit_mb=_require_int(raw, "memory_limit_mb"),
         output_limit_bytes=_require_int(raw, "output_limit_bytes"),
-        case_count=_require_int(raw, "case_count", minimum=0),
+        # 최소 1건이다. 0 을 허용하면 케이스 루프가 한 번도 돌지 않고 그대로 `AC` 로
+        # 떨어져 **모든 제출이 정답**이 된다. 케이스가 없는 것은 문제 적재 실패이지
+        # 사용자 책임이 아니므로 여기서 `IE` 로 끊는다.
+        case_count=_require_int(raw, "case_count", minimum=1),
         compare_options=compare_options,
         restrictions=restrictions,
     )

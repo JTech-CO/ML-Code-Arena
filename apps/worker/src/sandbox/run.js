@@ -45,7 +45,7 @@ const HOST_WAIT_MARGIN_MS = 20_000;
  * @param {string} stdout
  * @returns {RunnerOutput|null}
  */
-function parseRunnerOutput(stdout) {
+export function parseRunnerOutput(stdout) {
   const lines = stdout.split('\n').map((line) => line.trim()).filter(Boolean);
 
   for (let index = lines.length - 1; index >= 0; index -= 1) {
@@ -69,7 +69,7 @@ function parseRunnerOutput(stdout) {
  * @param {{ exitCode: number|null, oomKilled: boolean, hostTimedOut: boolean }} state
  * @returns {{ verdict: import('@mlca/shared').Verdict, error: string|null }}
  */
-function classifyWithoutOutput(state) {
+export function classifyWithoutOutput(state) {
   // OOM 이 SIGKILL 보다 우선한다. cgroup OOM 도 137 로 나타나므로 순서가 중요하다.
   if (state.oomKilled) {
     return { verdict: VERDICT.MLE, error: null };
