@@ -3,14 +3,15 @@
 > 이 팩에서 **매 세션 바뀌는 유일한 파일**. 세션이 끊겨도 이 파일만 읽으면 이어서 작업 가능해야 한다.
 
 ## 현재 상태
-- **현재 phase**: M2 완료 → **M3(데이터 모델 + API + 인증) 진입 가능**
-- **상태**: **M0·M1·M2 전부 DoD 통과.** M1 컨테이너 게이트 25/25, M2 DoD 7/7, M0 게이트 5/5.
-- **마지막 갱신**: 2026-08-06, M0+M1+M2 구현 세션
+- **현재 phase**: M3 완료 → **M4(디자인 토큰 + AppShell) 진입 가능**
+- **상태**: **M0·M1·M2·M3 전부 DoD 통과.**
+  M1 25/25 · M2 7/7 · M3 10/10 · 단위 테스트 71건 · 종단 6/6.
+- **마지막 갱신**: 2026-08-06, M0~M3 구현 세션
 - **저장소 경로**: `C:\Users\MSI\Desktop\ml-code-arena` — **비ASCII 경로로 되돌리지 말 것**
   (pnpm 네이티브 링커가 죽는다. 아래 막힘 기록)
 
-**한 줄 요약**: 제출이 큐를 타고 격리 컨테이너에서 채점되어 DB 에 기록되기까지가 완성됐다.
-HTTP 계층만 없다. 워커를 채점 도중 죽여도 회수되고 중복 결과가 생기지 않는다.
+**한 줄 요약**: 브라우저만 없다. HTTP 로 제출하면 큐를 타고 격리 컨테이너에서 채점되어
+판정이 돌아오고, SSE 로 실시간 전파된다. 익명 한도·계정 승계·빈도 제한까지 동작한다.
 
 ## 직전에 끝낸 것
 - 기술/디자인 백서 Phase 1 v0.1.0, 작업 하네스 팩 인스턴스화 (이전 세션)
@@ -30,20 +31,24 @@ HTTP 계층만 없다. 워커를 채점 도중 죽여도 회수되고 중복 결
   - `harness/docs/FILE_TREE.md` v0.2.0 — 경계 강제 수단 2종 명시, 신규 파일 반영
 
 ## 다음 할 일
-1. **M3(데이터 모델 + API + 인증/익명 세션) 진입.** `phases/M3_data_api_auth.md`.
-2. M3 작업 시 주의:
-   - **스키마 절반은 이미 있다.** `migrations/0001` 이 users·anon_sessions·problems·
-     submissions·solved 를, `0002` 가 집계 뷰와 `judging_at` 을 만든다. M3 는 concepts·
-     tags·testcases 를 `0003` 으로 추가하면 된다. 마이그레이션 도구 결정은 ADR-0008 로 끝났다.
-   - **제출 접수 로직을 워커에서 가져오지 말 것.** `apps/api` 는 `apps/worker` 를 import 할
-     수 없다(INV-3). API 는 자기 큐 생산자와 DB 풀을 갖는다. 공유되는 것은
-     `QUEUE_NAMES`·`QUEUE_PREFIX`·`JOB_OPTIONS` 같은 계약뿐이며 `packages/shared` 에 있다.
-   - 큐 작업 페이로드는 **제출 ID 하나**다 (`JudgeJob`). 소스를 실으면 재시도가 옛 데이터로
-     돌고 Redis 가 제출 원문 사본을 들게 된다.
-   - `queuePosition()` 이 `apps/worker/src/result/submissions.js` 에 있다. API 가 202 응답의
-     `queue_position` 을 만들 때 같은 정의를 쓰되, 경계상 코드를 재구현해야 한다.
+1. **M4(디자인 토큰 + AppShell) 진입.** `phases/M4_design_tokens.md`.
+   `docs/DESIGN.md` §3·§4·§5·§8·부록 A 를 읽고 토큰을 확정한다. 토큰이 흔들리면
+   컴포넌트를 전부 다시 손대므로 M5 직전에 확정한다.
+2. M4·M5 작업 시 API 쪽에서 알아둘 것:
+   - **응답 필드는 `apps/api/src/serialize.js` 가 통과 목록으로 고정한다.** 프론트가
+     필요한 필드가 없으면 거기 추가한다. DB 행을 그대로 내보내는 우회를 만들지 말 것 (INV-5).
+   - 제출 상세의 `detail` 은 `reason`·`expected_shape`·`actual_shape`·`violations` 등
+     **형태 정보만** 담는다. `ShapeDiff` 와 `VerdictLabel` 이 이 값을 쓴다.
+   - SSE 는 `GET /api/stream/submissions`. 이벤트 키는
+     `id·handle·problem·verdict·runtime_ms` 다섯이며 익명 제출은 오지 않는다.
+   - CORS 는 `CORS_ORIGINS`(기본 `http://localhost:5173`)이고 `credentials: true` 다.
+     세션 쿠키가 오가야 하므로 `origin` 을 반사로 두면 안 된다.
+   - 익명 잔여 문제 수는 `GET /api/auth/me` 의 `anonymous.remaining` 이다.
+     `AnonQuotaBar` 가 이 값을 쓴다.
 3. 미해결: Docker rootless 운용 여부 (ADR-0007 후보). 워커에 Docker 소켓을 주는 것은
    사실상 호스트 루트 권한이다. M7 배포 설계 전에는 정해야 한다.
+4. M7 에서 반드시 다룰 것: `trustProxy` 신뢰 범위(지금은 `X-Forwarded-For` 미신뢰라
+   프록시 뒤에서 익명 IP 가 하나로 묶인다), Redis 재기동 시 전원 로그아웃, SSE 프록시 검증.
 
 ## M1 확정 게이트 (재실행 명령)
 ~~~bash
@@ -120,6 +125,13 @@ pnpm judge:fixtures     # 게이트 24건 — 판정 8종 + 격리 불변식 + �
 | M2 | DoD 5 IE 집계 제외 | `problem_stats` · `user_ranking` 뷰 | PASS · judged=0 excluded=3, solved 미기록 | 2026-08-06 |
 | M2 | DoD 6 큐 지연 | `bench:submit --count 20 --paced` | PASS · **P95 8ms** (게이트 2000ms) | 2026-08-06 |
 | M2 | DoD 7 컨테이너(INV-8) | 위 | PASS · 20건 처리 후 잔존 **0** | 2026-08-06 |
+| M3 | DoD 1 마이그레이션 왕복 | `migrate down x3 → up` | PASS · 테이블 1→10, 뷰 2, 트리거 1 | 2026-08-06 |
+| M3 | DoD 2 종단 왕복 | `pnpm e2e:api` | PASS · **6/6**. 202→AC, WA shape 대조, SSE 2건 | 2026-08-06 |
+| M3 | DoD 3~10 | `pnpm --filter @mlca/api test` | PASS · **27/27** (진짜 DB·Redis) | 2026-08-06 |
+| M3 | DoD 5 우회 차단(INV-9) | 위 | PASS · 헤더·본문·카운터 컬럼·쿠키 위조 전부 403 유지 | 2026-08-06 |
+| M3 | DoD 9 비밀번호 | `psql` + CHECK 제약 | PASS · argon2id 3/3, 평문 삽입 시 제약 위반 | 2026-08-06 |
+| M3 | DoD 10 IP | 단위 테스트 | PASS · 32바이트 HMAC 일치, 원본 컬럼 부재 | 2026-08-06 |
+| 회귀 | M1·M2·M0 | `judge:fixtures` · `bench:submit` · 5종 | PASS · 25/25 · 8/8 AC · 전부 그린 | 2026-08-06 |
 
 ## 막힘 기록 (STOP 발동 시)
 
