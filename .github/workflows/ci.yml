@@ -38,6 +38,15 @@ jobs:
       - name: 모듈 경계 실효 검증
         run: pnpm check:boundaries
 
+      # INV-12 — 라이트·다크 전 조합의 텍스트 대비. 눈으로 보면 다크에서 한 토큰이
+      # 기준 아래로 떨어져도 라이트가 멀쩡해서 아무도 모른다.
+      - name: 토큰 대비 검사
+        run: pnpm check:contrast
+
+      # DESIGN.md §12 금지 목록 + 색 리터럴이 tokens.css 밖에 있는지.
+      - name: 디자인 린트
+        run: pnpm check:design
+
       # INV-1 — 시크릿이 무시 대상인지 확인. .gitignore 가 느슨해지면 여기서 걸린다.
       - name: .gitignore 시크릿 제외 확인
         run: |
