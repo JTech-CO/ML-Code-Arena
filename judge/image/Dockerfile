@@ -10,7 +10,7 @@ FROM python:3.11-slim
 
 # pip 캐시·빌드 도구를 남기지 않는다. 공격면과 이미지 크기를 동시에 줄인다.
 COPY requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir --require-hashes=false -r /tmp/requirements.txt \
+RUN pip install --no-cache-dir -r /tmp/requirements.txt \
     && rm -f /tmp/requirements.txt \
     && find /usr/local -name '__pycache__' -type d -prune -exec rm -rf {} + \
     && rm -rf /root/.cache

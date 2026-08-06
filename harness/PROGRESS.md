@@ -4,13 +4,14 @@
 
 ## 현재 상태
 - **현재 phase**: M1 — 채점 러너 + 격리 컨테이너 ★
-- **상태**: 구현 완료 · **게이트 미실행 (Docker 데몬 미기동)**
+- **상태**: **DoD 9개 중 8개 통과.** 컨테이너 게이트 24/24, M0 게이트 5/5.
+  DoD 6 만 게이트 문구 결정 대기 (구현은 안전한 쪽으로 완료)
 - **마지막 갱신**: 2026-08-06, M0+M1 구현 세션
 - **저장소 경로**: `C:\Users\MSI\Desktop\ml-code-arena` — **비ASCII 경로로 되돌리지 말 것**
   (pnpm 네이티브 링커가 죽는다. 아래 막힘 기록)
 
-**막힌 지점 한 줄**: Docker Desktop 이 꺼져 있다. 사용자가 실행한 뒤
-`pnpm judge:image && pnpm judge:fixtures` 를 돌리면 M1 DoD 가 확정된다.
+**한 줄 요약**: 채점기가 CLI 만으로 완결된다. 판정 8종이 전부 재현되고 격리 불변식
+4건(INV-4·INV-5·INV-6·INV-8)이 커널 상태로 확인됐다. M2 진입 가능.
 
 ## 직전에 끝낸 것
 - 기술/디자인 백서 Phase 1 v0.1.0, 작업 하네스 팩 인스턴스화 (이전 세션)
@@ -30,18 +31,19 @@
   - `harness/docs/FILE_TREE.md` v0.2.0 — 경계 강제 수단 2종 명시, 신규 파일 반영
 
 ## 다음 할 일
-1. **[사용자 조작 필요] Docker Desktop 실행** → 그 뒤 아래 두 줄로 M1 DoD 확정.
-   ~~~bash
-   pnpm judge:image        # 이미지 빌드 (numpy·scipy 설치라 첫 빌드는 수 분)
-   pnpm judge:fixtures     # 판정 8종 + 격리 불변식 게이트 전부
-   ~~~
-   실패하면 그 자리에서 고친다. **격리 옵션을 푸는 것은 레드라인이며 STOP 대상이다.**
-2. **[사용자 결정] DoD 6 게이트 문구** — `phases/M1_judge_runner.md` 증거 절 참조.
-   현재 grep 이 INV-7 을 **집행하는** 코드에 걸린다(거짓 양성). 코드는 안전한 쪽으로
-   두었고 게이트는 손대지 않았다.
-3. M1 확정 후 M2(큐 + 워커) 진입. `apps/worker/src/sandbox/` 는 이미 M1 에서
-   완성돼 있으므로 M2 는 큐 소비와 결과 기록만 붙이면 된다.
-4. M2 진입 전 결정: Docker rootless 운용 여부 (ADR-0007 후보), Postgres 16 · Redis 7 준비.
+1. **[사용자 결정] DoD 6 게이트 문구** — `phases/M1_judge_runner.md` 증거 절 참조.
+   grep 이 INV-7 을 **집행하는** 코드에 걸린다(거짓 양성). 실측 결과 kwarg 를 빼도
+   현재 numpy 는 객체 배열을 거부하고 버전이 정확히 고정돼 있어 두 선택지 모두 안전하다.
+   차이는 명시성 대 게이트 문구다. 코드는 안전한 쪽으로 두고 게이트는 손대지 않았다.
+2. M2(큐 + 워커) 진입. `apps/worker/src/sandbox/` 는 이미 M1 에서 완성돼 있으므로
+   M2 는 큐 소비와 결과 기록만 붙이면 된다. `runInSandbox()` 가 그대로 재사용된다.
+3. M2 진입 전 결정: Docker rootless 운용 여부 (ADR-0007 후보), Postgres 16 · Redis 7 준비.
+
+## M1 확정 게이트 (재실행 명령)
+~~~bash
+pnpm judge:image        # mlca-python:3.11  419MB
+pnpm judge:fixtures     # 게이트 24건 — 판정 8종 + 격리 불변식 + 커널 상태
+~~~
 
 ## M1 구현 시 확정한 것 (이후 phase 가 의존)
 - **러너 출력 스키마에 최상위 `detail` 추가.** `CE`·`FBD` 는 케이스를 하나도 실행하지
@@ -81,6 +83,16 @@
 | M0 | DoD 2·3 경계(INV-3) | `pnpm check:boundaries` | PASS · 위반 샘플 8/8 차단, 잔여 파일 0 | 2026-08-06 |
 | M0 | DoD 4 시크릿(INV-1) | `git check-ignore -v .env` | PASS · `.env` 무시 / `.env.example` 추적 | 2026-08-06 |
 | M0 | DoD 5 판정 8종 | `pnpm test` | PASS · 13/13 (백서 §4.3 표와 순서까지 대조) | 2026-08-06 |
+| M1 | 이미지 빌드 | `pnpm judge:image` | PASS · mlca-python:3.11 419MB | 2026-08-06 |
+| M1 | DoD 1~5·7~9 | `pnpm judge:fixtures` | PASS · **게이트 24/24** | 2026-08-06 |
+| M1 | DoD 2 판정 8종 재현 | 위 | PASS · **8/8** (샘플 11건) | 2026-08-06 |
+| M1 | DoD 3 네트워크(INV-4) | 위 | PASS · 인터페이스 `["lo"]`, 외부 접속 OSError | 2026-08-06 |
+| M1 | DoD 4 검사 순서(INV-6) | 위 | PASS · `fbd.py`→FBD, 최상위 raise 미실행 | 2026-08-06 |
+| M1 | DoD 5 컨테이너(INV-8) | 위 | PASS · ID 상이, `/tmp` 미노출 | 2026-08-06 |
+| M1 | DoD 7 기대값 비노출(INV-5) | 위 | PASS · 후보 300건 중 노출 **0건** | 2026-08-06 |
+| M1 | DoD 8 자원 상한 | 위 | PASS · MLE·TLE 재현 | 2026-08-06 |
+| M1 | DoD 9 fork 차단 | 위 | PASS · 62/400 성공 (상한 64) | 2026-08-06 |
+| M1 | DoD 6 (INV-7) | `git grep pickle judge/` | **보류** · 2건은 INV-7 집행 코드(거짓 양성) | 2026-08-06 |
 
 ## 막힘 기록 (STOP 발동 시)
 

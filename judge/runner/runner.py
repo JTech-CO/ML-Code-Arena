@@ -230,7 +230,9 @@ def main() -> None:
 
             started = time.perf_counter()
             actual = _call(entry, payload)
-            elapsed_ms = int((time.perf_counter() - started) * 1000)
+            # 버림이 아니라 반올림이다. 버리면 1.9ms 가 1ms 로 보고되고,
+            # 사용자가 비교하는 실행 시간이 계통적으로 짧게 나온다.
+            elapsed_ms = round((time.perf_counter() - started) * 1000)
             total_ms += elapsed_ms
 
             mismatch = compare_mod.compare(actual, expected, judge_spec.compare_options)

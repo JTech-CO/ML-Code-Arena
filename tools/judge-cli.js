@@ -139,9 +139,20 @@ async function prepareCases(problemDir, image) {
 
 /** @param {import('@mlca/shared').RunnerOutput|null} output */
 function describeCases(output) {
-  if (!output || !Array.isArray(output.cases)) return '';
+  if (!output || !Array.isArray(output.cases) || output.cases.length === 0) return '';
   const passed = output.cases.filter((item) => item.verdict === 'AC').length;
   return `${passed}/${output.cases.length} 통과`;
+}
+
+/**
+ * shape 을 파이썬 튜플 표기로 쓴다 — `(3, 3)` · `(9,)` · `()`.
+ * 사용자가 자기 코드에서 보는 표기와 같아야 대조가 된다 (docs/DESIGN.md §2.3).
+ * @param {number[]} shape
+ */
+function formatShape(shape) {
+  if (shape.length === 0) return '()';
+  if (shape.length === 1) return `(${shape[0]},)`;
+  return `(${shape.join(', ')})`;
 }
 
 /**
@@ -153,7 +164,8 @@ function report(result) {
   const lines = [`판정      ${result.verdict}`];
 
   if (output) {
-    lines.push(`케이스    ${describeCases(output)}`);
+    const cases = describeCases(output);
+    if (cases) lines.push(`케이스    ${cases}`);
     lines.push(`시간      ${output.total_runtime_ms}ms    메모리  ${output.peak_memory_mb}MB`);
   }
 
@@ -163,10 +175,10 @@ function report(result) {
     const detail = /** @type {Record<string, any>} */ (failed.detail ?? {});
     if (detail['reason']) lines.push(`사유      ${detail['reason']}`);
     if (detail['expected_shape']) {
-      lines.push(`기대 shape (${detail['expected_shape'].join(', ')})`);
+      lines.push(`기대 shape ${formatShape(detail['expected_shape'])}`);
     }
     if (detail['actual_shape']) {
-      lines.push(`실제 shape (${detail['actual_shape'].join(', ')})`);
+      lines.push(`실제 shape ${formatShape(detail['actual_shape'])}`);
     }
     if (detail['expected_type']) {
       lines.push(`기대 타입  ${detail['expected_type']}    실제 타입  ${detail['actual_type']}`);

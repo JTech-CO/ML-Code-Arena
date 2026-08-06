@@ -1,6 +1,6 @@
 # M1 — 채점 러너 + 격리 컨테이너 ★
 
-**상태**: 구현 완료 · **게이트 미실행 (Docker 데몬 미기동 — 사용자 조작 대기)**
+**상태**: DoD 9개 중 8개 통과 · DoD 6 은 게이트 문구 결정 대기 (구현은 안전한 쪽으로 완료)
 **갱신**: 2026-08-06
 
 ## 맥락
@@ -12,9 +12,7 @@
 - [x] M0 DoD 통과 (2026-08-06, 저장소 경로에서 재현 확인)
 - [x] `docs/TECHNICAL.md` §4(채점 엔진)·§5(격리) 정독
 - [x] INV-4·INV-5·INV-6·INV-7·INV-8 확인
-- [ ] **Docker 이미지 빌드 가능 환경 확인 — 미충족.** CLI 는 29.6.2 로 설치돼 있으나
-      데몬이 꺼져 있다. Docker Desktop 을 에이전트 프로세스에서 띄우지 못했고
-      서비스 시작은 권한 거부였다. 사용자가 Docker Desktop 을 실행해야 한다.
+- [x] Docker 이미지 빌드 가능 환경 확인 (engine 29.6.2, cgroup v2, seccomp builtin)
 
 ## 할 일
 `judge/image/Dockerfile`(python:3.11-slim + numpy·scipy) -> `judge/runner/spec.py`(채점 명세 로드) -> `judge/runner/ast_check.py`(정적 검사) -> `judge/runner/compare.py`(tolerance 비교) -> `judge/runner/runner.py`(실행 순서 조립) -> `apps/worker/src/sandbox.js`(컨테이너 실행 옵션 단일 상수 + spawn) -> `tools/judge-cli.js`(로컬 채점 CLI).
@@ -89,25 +87,41 @@ import 하지 않아 호스트에서 돌릴 수 있다. 실제 파일을 거쳐 
 `MLE` 와 `TLE` 를 가르는 분류 로직도 덮었다. cgroup OOM 도 SIGKILL 도 똑같이 137 로
 나타나므로 OOM 플래그를 먼저 보지 않으면 메모리 초과가 시간 초과로 보고된다.
 
-### 남은 것 (Docker 필요)
+### 컨테이너 게이트 — 24/24 통과
 
 ~~~
-pnpm judge:image        # docker build -t mlca-python:3.11 judge/image
-pnpm judge:fixtures     # DoD 1~5, 7~9 전부
+$ pnpm judge:image        →  mlca-python:3.11  419MB
+$ pnpm judge:fixtures     →  게이트 24건 중 24건 통과.  (exit 0)
 ~~~
 
-`judge-fixtures.js` 가 다음을 자동 검증하도록 짜여 있다.
+| DoD | 검증 | 실측 |
+|---|---|---|
+| 1 | `judge-cli --json` 이 §4.2.3 스키마와 일치 | verdict·cases[].detail·total_runtime_ms·peak_memory_mb·error 확인 |
+| 2 | 판정 8종 재현 (샘플 11건) | **8/8**. AC·WA·TLE·MLE·RE·CE·FBD·IE 전부 |
+| 3 | 네트워크 차단 (INV-4) | `network.py` → `RE` / 인터페이스 `["lo"]` / 외부 접속 `OSError` |
+| 4 | AST 검사가 import 보다 먼저 (INV-6) | `fbd.py` → `FBD`, 위반 2건. 최상위 `raise` 미실행 |
+| 5 | 컨테이너 재사용 금지 (INV-8) | ID `52c2ed007f3a` ≠ `4bc53c7680b4`, `tmp_read.py` → `AC` |
+| 7 | 기대값 비노출 (INV-5) | 기대값 후보 **300건 중 노출 0건** |
+| 8 | 자원 상한 | `mle.py` → `MLE`, `tle.py` → `TLE` |
+| 9 | fork 폭주 차단 | 유계 fork 루프 **62/400 성공** (상한 64) |
 
-| DoD | 검증 방식 |
-|---|---|
-| 1 | `judge-cli --json` 출력이 §4.2.3 스키마와 일치 |
-| 2 | 판정 8종 재현 표 (샘플 11건, 8종 커버 확인) |
-| 3 | `network.py` → `RE` + 커널 상태 프로브(인터페이스·seccomp·CapEff·NoNewPrivs·uid) |
-| 4 | `fbd.py` → `FBD` (최상위 `raise` 미실행이 곧 증거) |
-| 5 | 컨테이너 ID 상이 + `tmp_read.py` 가 `AC` |
-| 7 | 기대값 문자열을 컨테이너에서 뽑아 `WA` 출력에 grep |
-| 8 | `mle.py` → `MLE`, `tle.py` → `TLE` |
-| 9 | 유계 fork 루프의 성공 횟수가 `pids-limit` 이하 |
+커널이 보고한 격리 상태 — 플래그를 넘겼다는 사실이 아니라 실제로 걸렸는지를 본다.
+
+~~~
+루트 파일시스템 쓰기 가능   false
+uid                        65534
+CapEff                     0000000000000000
+NoNewPrivs                 1
+Seccomp                    2  (filter)
+~~~
+
+정리 상태도 확인했다. 고아 컨테이너 0건, `.judge-work` 잔여 0건 — 제출 원문이 디스크에 남지 않는다.
+
+### 컨테이너에서 확정된 것
+
+호스트 numpy(2.3.4)와 컨테이너 numpy(2.4.6)의 케이스 해시가 다르다
+(`fd274f5e…` vs `d8c5a3d1…`). 기대값을 컨테이너에서 생성해야 하는 이유가 실측으로 확인됐다.
+호스트에서 만든 기대값을 썼다면 정답 제출이 `WA` 로 떨어졌을 것이다.
 
 ### DoD 6 — 게이트 문구 조정 필요 (사용자 결정)
 
@@ -122,9 +136,26 @@ codec.py:146   with np.load(npz_path, allow_pickle=False) as handle:
 이 줄은 그 포맷을 **쓰는** 코드가 아니라 **끄는** 코드다. 즉 INV-7 위반이 아니라
 INV-7 의 집행 지점이다. 게이트가 컴플라이언스 코드에 걸리는 거짓 양성이다.
 
-빼면 게이트는 문자 그대로 통과하지만, numpy 의 기본값(현재 False)에 의존하게 된다.
-기본값이 바뀌면 신뢰 경계가 조용히 무너지고, 그건 HARNESS.md §3 의 최상위 우선순위를
-뒤집는 거래다. **코드는 안전한 쪽으로 두었고 게이트는 손대지 않았다.**
+**실측 데이터** (컨테이너에서 확인, 2026-08-06)
+
+~~~
+numpy 2.4.6
+기본값(kwarg 생략) → ValueError: Object arrays cannot be loaded when allow_pickle=False
+~~~
+
+즉 현재 numpy 는 kwarg 없이도 객체 배열을 거부한다. 그리고 `requirements.txt` 가
+`numpy==2.4.6` 으로 **정확히 고정**하므로 기본값이 몰래 바뀔 수 없다. 버전을 올리는 것은
+의도적 행위이고, 그때 적대적 파일 거부 테스트가 함께 돈다.
+
+따라서 선택지는 둘 다 안전하며 차이는 **명시성 대 게이트 문구**다.
+
+| | kwarg 유지 (현재) | kwarg 제거 |
+|---|---|---|
+| 보호 근거 | 코드에 명시 | numpy 기본값 + 정확 버전 고정 |
+| DoD 6 grep | 2건 (거짓 양성) | 0건 (문자 그대로 통과) |
+| numpy 상향 시 | 자동으로 안전 | 적대적 파일 테스트가 잡아냄 |
+
+**코드는 안전한 쪽으로 두었고 게이트는 손대지 않았다.** 게이트 변경은 사용자 결정이다.
 
 제안: DoD 6 을 다음으로 바꾼다.
 1. `judge/` 에서 그 포맷을 **활성화**하는 사용이 0건 (`allow_pickle=True` 금지)
